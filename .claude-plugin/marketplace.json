@@ -38,7 +38,7 @@
       "description": "PR レビュー支援スキル。PR URL から変更を解説し、問題点や確認すべき質問を提示する。"
     },
     {
-      "name": "agent-skills-all",
+      "name": "nayukata-skills",
       "source": "./",
       "skills": [
         "./skills/create-pr",

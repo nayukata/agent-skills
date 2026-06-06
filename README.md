@@ -15,7 +15,7 @@ Claude Code 上で marketplace を追加し、欲しいものだけを選んで�
 /plugin install review-pr@nayukata
 
 # 2-b. まとめて全部入れる
-/plugin install agent-skills-all@nayukata
+/plugin install nayukata-skills@nayukata
 ```
 
 `/plugin marketplace add` に渡すのは GitHub の `owner/repo`。`@nayukata` の部分は marketplace 名（`.claude-plugin/marketplace.json` の `name`）。
@@ -36,9 +36,9 @@ Claude Code 上で marketplace を追加し、欲しいものだけを選んで�
 
 | plugin | 内容 |
 |---|---|
-| `agent-skills-all` | 上記 5 スキルをまとめて導入 |
+| `nayukata-skills` | 上記 5 スキルをまとめて導入 |
 
-> `create-pr` は UI 変更の動作確認で `screen-review` を利用する。両方使う場合は `agent-skills-all` か、`create-pr` と `screen-review` の併用がおすすめ。
+> `create-pr` は UI 変更の動作確認で `screen-review` を利用する。両方使う場合は `nayukata-skills` か、`create-pr` と `screen-review` の併用がおすすめ。
 
 ## リポジトリ構成
 
