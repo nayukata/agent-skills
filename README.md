@@ -60,9 +60,9 @@ Claude Code 上で marketplace を追加し、欲しいものだけを選んで�
 
 各 plugin は `source: "./"`（リポジトリ root）を共有し、`skills` フィールドで含める対象を絞り込んでいる。新しい skill を追加するときは、`skills/` にディレクトリを置き、`marketplace.json` の `plugins` に entry を 1つ足す。
 
-## 管理者向け: marketplace の更新
+## 最新版を取り込む
 
-plugin を追加・変更したら、利用者は次で最新を取り込む。
+skill を編集して GitHub に push したあと、手元の Claude Code に反映するには次を実行する。
 
 ```bash
 /plugin marketplace update nayukata
