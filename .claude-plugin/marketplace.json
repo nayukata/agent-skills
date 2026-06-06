@@ -1,0 +1,53 @@
+{
+  "name": "nayukata",
+  "owner": {
+    "name": "nayukata"
+  },
+  "metadata": {
+    "description": "nayukata 個人の Claude Code skill 配布マーケットプレイス"
+  },
+  "plugins": [
+    {
+      "name": "create-pr",
+      "source": "./",
+      "skills": ["./skills/create-pr"],
+      "description": "PR 作成スキル。設計意図・トレードオフを織り込んだ説明文とインラインコメントを生成し、UI 変更時は前後スクショ / 動作 GIF を screen-review 連携で自動添付する。"
+    },
+    {
+      "name": "ux-laws",
+      "source": "./",
+      "skills": ["./skills/ux-laws"],
+      "description": "UI 実装前または既存 UI の改修判断時に、10 の UX 法則に基づいてレビューし推奨改善案を出すスキル。"
+    },
+    {
+      "name": "writing-tasks",
+      "source": "./",
+      "skills": ["./skills/writing-tasks"],
+      "description": "タスク / バグチケットの説明文をユーザー視点で書くスキル。ClickUp / Jira / GitHub Issues / Linear / Notion などに対応。"
+    },
+    {
+      "name": "screen-review",
+      "source": "./",
+      "skills": ["./skills/screen-review"],
+      "description": "UI 動作確認のスクショ / 画面録画を 1 ディレクトリに集約し macOS Preview で一括表示するスキル。PR への修正前後テーブル / GIF 埋め込みも自動化する。"
+    },
+    {
+      "name": "review-pr",
+      "source": "./",
+      "skills": ["./skills/review-pr"],
+      "description": "PR レビュー支援スキル。PR URL から変更を解説し、問題点や確認すべき質問を提示する。"
+    },
+    {
+      "name": "agent-skills-all",
+      "source": "./",
+      "skills": [
+        "./skills/create-pr",
+        "./skills/ux-laws",
+        "./skills/writing-tasks",
+        "./skills/screen-review",
+        "./skills/review-pr"
+      ],
+      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr の 5 スキルをまとめて導入する。"
+    }
+  ]
+}
