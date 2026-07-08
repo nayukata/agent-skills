@@ -1,5 +1,6 @@
 ---
-description: Review a pull request from its URL. Use when the user shares a GitHub PR URL and wants to understand the changes, get a review summary, or identify potential issues. Explains changes clearly, highlights design decisions, and generates gentle questions for areas lacking clear intent.
+name: review-pr
+description: GitHub の PR URL から変更内容をレビューする。変更を分かりやすく解説し、設計判断を明らかにし、意図が読み取れない箇所への柔らかい質問を生成する。ユーザーが PR の URL を共有して、変更の理解・レビューサマリ・問題点の洗い出しを求めた時に使う。
 ---
 
 # PR レビュー支援

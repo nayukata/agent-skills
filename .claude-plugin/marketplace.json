@@ -38,6 +38,12 @@
       "description": "PR レビュー支援スキル。PR URL から変更を解説し、問題点や確認すべき質問を提示する。"
     },
     {
+      "name": "design-hearing",
+      "source": "./",
+      "skills": ["./skills/design-hearing"],
+      "description": "曖昧なデザイン要望（「いい感じに」等）を、仮埋めブリーフと対比モックのヒアリングで具体化してから UI を実装するスキル。新規画面や方向性の曖昧な依頼で発動し、既存デザイン内の小さな1要素修正では発動しない。擬態語・素材・景色を実装値に翻訳する辞書と、人間向けの語彙ガイドを同梱。"
+    },
+    {
       "name": "nayukata-skills",
       "source": "./",
       "skills": [
@@ -45,9 +51,10 @@
         "./skills/ux-laws",
         "./skills/writing-tasks",
         "./skills/screen-review",
-        "./skills/review-pr"
+        "./skills/review-pr",
+        "./skills/design-hearing"
       ],
-      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr の 5 スキルをまとめて導入する。"
+      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr / design-hearing の 6 スキルをまとめて導入する。"
     }
   ]
 }

@@ -29,6 +29,7 @@ Claude Code 上で marketplace を追加し、欲しいものだけを選んで�
 | `create-pr` | PR 作成 | 設計意図・トレードオフを織り込んだ説明文 + インラインコメントを生成。UI 変更時は前後スクショ / 動作 GIF を screen-review 連携で自動添付 |
 | `review-pr` | PR レビュー | PR URL から変更を解説し、問題点や確認すべき質問を提示 |
 | `ux-laws` | UI 設計・改修 | 10 の UX 法則に基づいて既存 UI をレビューし、推奨改善案を出す |
+| `design-hearing` | UI デザイン具体化 | 曖昧なデザイン要望（「いい感じに」等）を仮埋めブリーフと対比モックのヒアリングで具体化してから実装。擬態語・素材・景色を実装値に翻訳する辞書つき |
 | `writing-tasks` | チケット作成 | タスク / バグチケットの説明文をユーザー視点で書く（ClickUp / Jira / GitHub Issues / Linear / Notion など） |
 | `screen-review` | UI 動作確認 | スクショ / 画面録画を集約して macOS Preview で一括表示。PR への修正前後テーブル / GIF 埋め込みも自動化 |
 
@@ -36,7 +37,7 @@ Claude Code 上で marketplace を追加し、欲しいものだけを選んで�
 
 | plugin | 内容 |
 |---|---|
-| `nayukata-skills` | 上記 5 スキルをまとめて導入 |
+| `nayukata-skills` | 上記 6 スキルをまとめて導入 |
 
 > `create-pr` は UI 変更の動作確認で `screen-review` を利用する。両方使う場合は `nayukata-skills` か、`create-pr` と `screen-review` の併用がおすすめ。
 
@@ -51,11 +52,15 @@ Claude Code 上で marketplace を追加し、欲しいものだけを選んで�
     ├── review-pr/SKILL.md
     ├── ux-laws/SKILL.md
     ├── writing-tasks/SKILL.md
-    └── screen-review/
+    ├── screen-review/
+    │   ├── SKILL.md
+    │   └── scripts/       # 画面確認 / PR 添付の補助スクリプト
+    │       ├── publish-pr.sh
+    │       └── show.sh
+    └── design-hearing/
         ├── SKILL.md
-        └── scripts/       # 画面確認 / PR 添付の補助スクリプト
-            ├── publish-pr.sh
-            └── show.sh
+        ├── references/    # ブリーフ形式 / 翻訳辞書 / 禁止パターン
+        └── for-humans.md  # 人間向けの語彙ガイド（スキル動作には不要）
 ```
 
 各 plugin は `source: "./"`（リポジトリ root）を共有し、`skills` フィールドで含める対象を絞り込んでいる。新しい skill を追加するときは、`skills/` にディレクトリを置き、`marketplace.json` の `plugins` に entry を 1つ足す。

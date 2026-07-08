@@ -235,6 +235,22 @@ PYEOF
 }
 
 # ----------------------------------------------------------------------------
+# 6.5. Fail fast if any asset lacks a resolved URL
+# ----------------------------------------------------------------------------
+# url_for が空を返したまま進むと PR 本文に壊れた画像 (`![x]()`) が入る。
+# 本文を書き換える前に全 asset の URL 解決を確認し、欠けがあれば中断する。
+MISSING=()
+for f in "${ASSETS[@]}"; do
+  bn=$(basename "$f")
+  [ -n "$(url_for "$bn")" ] || MISSING+=("$bn")
+done
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo "✗ アップロード URL を解決できないファイルがあります: ${MISSING[*]}" >&2
+  echo "→ GitHub が textarea に挿入する形式が変わった可能性があります。PR 本文は変更していません。" >&2
+  exit 1
+fi
+
+# ----------------------------------------------------------------------------
 # 7. Compose screen-review body section
 # ----------------------------------------------------------------------------
 SECTION_FILE=$(mktemp)
@@ -286,7 +302,12 @@ trap 'rm -f "$TEXTAREA_JSON" "$SECTION_FILE" "$BODY_FILE"' EXIT
 
   if [ ${#solos[@]} -gt 0 ]; then
     echo
-    echo "## スクリーンショット"
+    # before/after ペアが既に「## スクリーンショット」を出している場合、単発分は補足として区別する
+    if [ $pairs_emitted -eq 1 ]; then
+      echo "## 補足スクリーンショット"
+    else
+      echo "## スクリーンショット"
+    fi
     echo
     if [ "$LAYOUT" = "horizontal" ]; then
       # 列ヘッダーは --labels を最優先。指定が無ければファイル名 (<NN>- を除いた部分) にフォールバック

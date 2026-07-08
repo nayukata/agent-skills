@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Create a pull request with contextual description, inline comments, and (when UI changes are involved) before/after screenshots + 動作確認 GIF auto-attached via the screen-review skill. Use when the user asks to create a PR, submit changes for review, or after completing an implementation task that is ready for review.
+description: 設計意図・トレードオフを織り込んだ説明文とインラインコメント付きで pull request を作成する。UI 変更を含む場合は screen-review スキル連携で修正前後スクリーンショットと動作確認 GIF を自動添付する。ユーザーが PR 作成・レビュー依頼を求めた時、または実装タスクが完了してレビューに出せる状態になった時に使う。
 ---
 
 # PR を作成する
@@ -24,7 +24,9 @@ PR作成者の責務は、レビュアーがその判断を下せるだけの文
 ## 文体ルール
 
 - 自然な敬語で、柔らかく簡潔に書く（〜です/ます/しました/お願いします/思います）
-- 文体: skills/humanizer を参考にする
+- 同じ語尾を連続させない。特に「〜そうです」「〜になります」の繰り返しは機械的に響くので、「〜と思います」「〜です」等に言い換える
+- 「〜してしまう」は望ましくない結末専用（「壊してしまう」）。望ましい変更を説明する文脈では「〜にする」と書く
+- 事実と推測を区別する。差分から分かる事実に推測形（「〜のようです」「〜そうです」）を使わない。本当に推測のときだけ推測形にする
 - 主語をコンポーネント名やファイル名にしない。必ず「ユーザーの体験」や「機能の仕様」を主語にして書く。
 - コンポーネント名や技術的な実装手段（ライブラリ名など）は、仕様説明のあとの補足としてカッコ書きやサブ箇条書きに留める
 - 内部用語（状態名・enum 値・分岐名・フラグ名・ドメイン固有語）を説明なしに地の文へ出さない。レビュアーがコードベースの語彙を知っている前提を置かない。初出で**概念を普通の言葉で書いて太字**にし、**識別子は（`code`）で添える**（例:「`draft` を地の文に置く」→「**下書き状態**（`draft`）」）
@@ -221,36 +223,28 @@ UI に影響する PR では、修正前後のスクリーンショットと動�
 
 以下のいずれかに該当すれば実行対象。
 
-- `git diff --name-only` で `apps/web/` 配下、`packages/ui/` 配下、または `*.tsx` / `*.css` / `public/` に変更がある
+- `git diff --name-only` でフロントエンドのコード（`*.tsx` / `*.jsx` / `*.vue` / `*.svelte` / `*.css` 等）や画像などの静的アセットに変更がある
 - ユーザー目線で見た目や挙動が変わる（既存ボタンの位置変更、新規モーダル、アニメーション追加 等）
 
 該当しない場合（バックエンドのみ、テスト追加のみ、リファクタで挙動不変）はスキップ。
+screen-review スキルが導入されていない環境でもスキップし、スクリーンショットを添付できない旨をユーザーに伝える。
 
 #### 素材がない場合
 
-`/tmp/claude-shots/<TOPIC>/` がまだ無ければ、screen-review スキルの規約で素材を揃えてから戻る。
-
-- ファイル名: `<NN>-before-<label>.png` ⟷ `<NN>-after-<label>.png`（テーブルになる修正前/修正後ペア）
-- 単発スクショ: `<NN>-<label>.png`（補足セクションへ）
-- 動画: `<NN>-<label>.webm`（自動 GIF 化）
-
-撮影方法は `~/.claude/skills/screen-review/SKILL.md` を参照。
+素材がまだ無ければ、screen-review スキルを発動し、そのディレクトリ規約・ファイル命名規約（修正前/修正後ペア、単発、動画の使い分けを含む）に従って素材を揃えてから戻る。規約はここに転記せず、常に screen-review 側を正とする。
 
 #### 実行
 
+screen-review スキルの「PR 添付フロー」に従い、screen-review スキルのディレクトリにある `scripts/publish-pr.sh` を実行する。
+
 ```bash
-~/.claude/skills/screen-review/scripts/publish-pr.sh /tmp/claude-shots/<TOPIC>
+<screen-review スキルのディレクトリ>/scripts/publish-pr.sh /tmp/claude-shots/<TOPIC>
 ```
 
 - PR 番号は現ブランチから自動取得
 - 本文末尾にマーカーで囲まれたブロックが差し込まれる
 - 何度実行しても重複しない（既存ブロックを差し替える）
-
-#### マージ後の清掃（PR マージ後に実行）
-
-```bash
-gh release delete pr-assets-pr<N> --yes --cleanup-tag
-```
+- マージ後の清掃は不要（画像は GitHub の user-attachments に保持され、リポジトリを汚さない）
 
 ### 7. インラインコメントの投稿
 

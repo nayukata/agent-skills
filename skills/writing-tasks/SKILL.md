@@ -1,6 +1,6 @@
 ---
 name: writing-tasks
-description: Writes task or bug ticket descriptions for any task tracker (ClickUp, Jira, GitHub Issues, Linear, Notion, etc.) from the user's perspective — what is happening or what is needed. Implementation details (function names, file paths, library names, code mechanics) belong in PRs and commits, not in tickets. Use when the user asks to create a ticket, file an issue, draft a task, or write up a bug report.
+description: タスク管理ツール（ClickUp / Jira / GitHub Issues / Linear / Notion 等）向けのタスク・バグチケットの説明文を、ユーザー視点（何が起きているか・何が必要か）で書く。実装詳細（関数名・ファイルパス・ライブラリ名）は PR とコミットに委ね、チケットには書かない。ユーザーがチケット起票・issue 作成・タスクの下書き・バグ報告の作成を求めた時に使う。
 ---
 
 # Writing Tasks

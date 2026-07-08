@@ -37,9 +37,9 @@ UI 動作確認で撮影した PNG / WebM を `/tmp/claude-shots/<TOPIC>/` に�
    agent-browser --session <s> screenshot /tmp/claude-shots/<TOPIC>/01-before-list.png
    ```
 
-3. **一括表示**: `scripts/show.sh` を **実行** する (内容を読み込まない)
+3. **一括表示**: `scripts/show.sh` を **実行** する (内容を読み込まない)。パスはこのスキルのディレクトリ (スキル読み込み時に提示される base directory) からの相対
    ```bash
-   ~/.claude/skills/screen-review/scripts/show.sh /tmp/claude-shots/<TOPIC>
+   <このスキルのディレクトリ>/scripts/show.sh /tmp/claude-shots/<TOPIC>
    ```
    スクリプトは以下を自動でやる:
    1. 直下の `*.png` を全部拾い、最大寸法 (`max(width)` × `max(height)`) に `sips -p` でパディング (背景 `#222222`)。揃えないと Preview がサイズ別に複数ウィンドウに分散する
@@ -89,7 +89,7 @@ UI 動作確認で撮影した PNG / WebM を `/tmp/claude-shots/<TOPIC>/` に�
 ### 実行
 
 ```bash
-~/.claude/skills/screen-review/scripts/publish-pr.sh \
+<このスキルのディレクトリ>/scripts/publish-pr.sh \
   [--layout horizontal|vertical] [--labels "上部,中盤,下部"] \
   /tmp/claude-shots/<TOPIC> [PR_NUMBER]
 ```
