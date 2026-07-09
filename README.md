@@ -1,8 +1,21 @@
 # agent-skills
 
-nayukata 個人の Claude Code スキルを配布する plugin marketplace。
+nayukata 個人の AI エージェント用スキル集。SKILL.md 形式（Agent Skills 仕様）を読むエージェント全般で使え、skills CLI / Claude Code plugin marketplace / install.sh の3つの方法で導入できる。
 
 ## インストール
+
+### 一般ユーザー向け（推奨）
+
+Codex CLI など、SKILL.md 形式の Agent Skills 仕様を読むエージェント全般で使える。[skills CLI](https://github.com/vercel-labs/skills)（`npx skills`）経由で導入する。
+
+```bash
+npx skills add nayukata/agent-skills
+```
+
+- `--skill <name>`: 個別のスキルだけを選んで導入する。
+- `--copy`: symlink の代わりに実体コピーする（symlink 先を読めないサンドボックス向け）。
+
+### Claude Code ユーザー向け
 
 Claude Code 上で marketplace を追加し、欲しいものだけを選んで導入できる。
 
@@ -20,9 +33,24 @@ Claude Code 上で marketplace を追加し、欲しいものだけを選んで�
 
 `/plugin marketplace add` に渡すのは GitHub の `owner/repo`。`@nayukata` の部分は marketplace 名（`.claude-plugin/marketplace.json` の `name`）。
 
+### ローカル開発向け
+
+このリポジトリを clone してスキルを編集する人向け。symlink ベースの `install.sh` で、編集内容を各エージェントに即反映できる。
+
+```bash
+git clone https://github.com/nayukata/agent-skills.git
+cd agent-skills
+./install.sh
+```
+
+これを実行すると、`~/.agents/skills/` を共有ハブとして各スキルへの symlink を作り、そこから `~/.claude/skills/`・`~/.codex/skills/`・`~/.gemini/skills/` にスキル単位で symlink を張る（親ディレクトリが存在するエージェントのみ対象）。
+
+- `--copy`: symlink の代わりに実体コピーする。サンドボックスなどで symlink 先を読めないエージェント向けのフォールバック。
+- `--agent-dir <path>`: 上記3つに加えて、任意のエージェントのスキルディレクトリを追加で対象にする（複数指定可）。
+
 ## 配布している plugin
 
-すべてタスクの内容に応じて Claude が自動で発動するスキル。
+すべてタスクの内容に応じてエージェントが自動で発動するスキル。
 
 | plugin | 用途 | 説明 |
 |---|---|---|
@@ -47,6 +75,7 @@ Claude Code 上で marketplace を追加し、欲しいものだけを選んで�
 .
 ├── .claude-plugin/
 │   └── marketplace.json   # marketplace 定義（個別 plugin + 全部入り）
+├── install.sh             # ローカル開発向けの symlink 導入スクリプト
 └── skills/                # 自動発動スキル
     ├── create-pr/SKILL.md
     ├── review-pr/SKILL.md
