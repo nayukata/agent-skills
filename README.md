@@ -60,12 +60,14 @@ cd agent-skills
 | `design-hearing` | UI デザイン具体化 | 曖昧なデザイン要望（「いい感じに」等）を仮埋めブリーフと対比モックのヒアリングで具体化してから実装。擬態語・素材・景色を実装値に翻訳する辞書つき |
 | `writing-tasks` | チケット作成 | タスク / バグチケットの説明文をユーザー視点で書く（ClickUp / Jira / GitHub Issues / Linear / Notion など） |
 | `screen-review` | UI 動作確認 | スクショ / 画面録画を集約して macOS Preview で一括表示。PR への修正前後テーブル / GIF 埋め込みも自動化 |
+| `lp-marketing` | LP 制作・改善 | 誰に・何を・なぜ信じてもらうかを確定してから構成・コピー・計測設計まで導く。マーケ用語はユーザーに要求せず、既存LPの「反応が悪い」相談にも対応 |
+| `web-marketing` | Web 集客戦略 | ボトルネックの特定からチャネル選定・施策・計測まで導く。LP単体の相談は `lp-marketing` に接続 |
 
 ### 全部入り
 
 | plugin | 内容 |
 |---|---|
-| `nayukata-skills` | 上記 6 スキルをまとめて導入 |
+| `nayukata-skills` | 上記 8 スキルをまとめて導入 |
 
 > `create-pr` は UI 変更の動作確認で `screen-review` を利用する。両方使う場合は `nayukata-skills` か、`create-pr` と `screen-review` の併用がおすすめ。
 

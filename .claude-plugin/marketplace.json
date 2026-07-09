@@ -44,6 +44,18 @@
       "description": "曖昧なデザイン要望（「いい感じに」等）を、仮埋めブリーフと対比モックのヒアリングで具体化してから UI を実装するスキル。新規画面や方向性の曖昧な依頼で発動し、既存デザイン内の小さな1要素修正では発動しない。擬態語・素材・景色を実装値に翻訳する辞書と、人間向けの語彙ガイドを同梱。"
     },
     {
+      "name": "lp-marketing",
+      "source": "./",
+      "skills": ["./skills/lp-marketing"],
+      "description": "LP（ランディングページ）の制作・改善をマーケティング戦略から組み立てるスキル。「誰に・何を・なぜ信じてもらうか」を確定し、訪問者の温度感に合わせた構成・コピー・計測設計まで導く。ブリーフ・訴求構成・コピーライティング・計測などのリファレンスを同梱。"
+    },
+    {
+      "name": "web-marketing",
+      "source": "./",
+      "skills": ["./skills/web-marketing"],
+      "description": "Webマーケティング全般（SNS運用・SEO・広告・メール/LINE・コンテンツ）の戦略立案と施策設計のスキル。ボトルネックの特定からチャネル選定・施策・計測まで導く。LP単体の相談は lp-marketing スキルに接続する。"
+    },
+    {
       "name": "nayukata-skills",
       "source": "./",
       "skills": [
@@ -52,9 +64,11 @@
         "./skills/writing-tasks",
         "./skills/screen-review",
         "./skills/review-pr",
-        "./skills/design-hearing"
+        "./skills/design-hearing",
+        "./skills/lp-marketing",
+        "./skills/web-marketing"
       ],
-      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr / design-hearing の 6 スキルをまとめて導入する。"
+      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr / design-hearing / lp-marketing / web-marketing の 8 スキルをまとめて導入する。"
     }
   ]
 }
