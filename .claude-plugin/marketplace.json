@@ -10,7 +10,10 @@
     {
       "name": "create-pr",
       "source": "./",
-      "skills": ["./skills/create-pr"],
+      "skills": [
+        "./skills/create-pr",
+        "./skills/japanese-tech-writing"
+      ],
       "description": "PR 作成スキル。設計意図・トレードオフを織り込んだ説明文とインラインコメントを生成し、UI 変更時は前後スクショ / 動作 GIF を screen-review 連携で自動添付する。"
     },
     {
@@ -34,8 +37,17 @@
     {
       "name": "review-pr",
       "source": "./",
-      "skills": ["./skills/review-pr"],
+      "skills": [
+        "./skills/review-pr",
+        "./skills/japanese-tech-writing"
+      ],
       "description": "PR レビュー支援スキル。PR URL から変更を解説し、問題点や確認すべき質問を提示する。"
+    },
+    {
+      "name": "japanese-tech-writing",
+      "source": "./",
+      "skills": ["./skills/japanese-tech-writing"],
+      "description": "k16shikano氏による日本語技術文書の文章規範。Unlicenseで公開されたGistを、出典とライセンスを明記して再配布する。"
     },
     {
       "name": "design-hearing",
@@ -64,11 +76,12 @@
         "./skills/writing-tasks",
         "./skills/screen-review",
         "./skills/review-pr",
+        "./skills/japanese-tech-writing",
         "./skills/design-hearing",
         "./skills/lp-marketing",
         "./skills/web-marketing"
       ],
-      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr / design-hearing / lp-marketing / web-marketing の 8 スキルをまとめて導入する。"
+      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr / japanese-tech-writing / design-hearing / lp-marketing / web-marketing の 9 スキルをまとめて導入する。"
     }
   ]
 }

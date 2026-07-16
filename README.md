@@ -56,6 +56,7 @@ cd agent-skills
 |---|---|---|
 | `create-pr` | PR 作成 | 設計意図・トレードオフを織り込んだ説明文 + インラインコメントを生成。UI 変更時は前後スクショ / 動作 GIF を screen-review 連携で自動添付 |
 | `review-pr` | PR レビュー | PR URL から変更を解説し、問題点や確認すべき質問を提示 |
+| `japanese-tech-writing` | 日本語技術文書 | 論証、読み手の負荷、冗長性、LLMらしい空句を点検する文章規範 |
 | `ux-laws` | UI 設計・改修 | 10 の UX 法則に基づいて既存 UI をレビューし、推奨改善案を出す |
 | `design-hearing` | UI デザイン具体化 | 曖昧なデザイン要望（「いい感じに」等）を仮埋めブリーフと対比モックのヒアリングで具体化してから実装。擬態語・素材・景色を実装値に翻訳する辞書つき |
 | `writing-tasks` | チケット作成 | タスク / バグチケットの説明文をユーザー視点で書く（ClickUp / Jira / GitHub Issues / Linear / Notion など） |
@@ -67,9 +68,15 @@ cd agent-skills
 
 | plugin | 内容 |
 |---|---|
-| `nayukata-skills` | 上記 8 スキルをまとめて導入 |
+| `nayukata-skills` | 上記 9 スキルをまとめて導入 |
 
 > `create-pr` は UI 変更の動作確認で `screen-review` を利用する。両方使う場合は `nayukata-skills` か、`create-pr` と `screen-review` の併用がおすすめ。
+
+### 第三者が作成したskill
+
+`japanese-tech-writing`は、本リポジトリのメンテナーが作成したskillではありません。
+原作者は[k16shikano氏](https://github.com/k16shikano)で、[公開Gist](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d)を[Unlicense](https://gist.github.com/k16shikano/67625f2a7d96e3bbdfae8d571a936063)に基づいて再配布しています。
+詳しい来歴とライセンス本文は、`skills/japanese-tech-writing/NOTICE.md`と`skills/japanese-tech-writing/LICENSE`に収録しています。
 
 ## リポジトリ構成
 
@@ -81,6 +88,10 @@ cd agent-skills
 └── skills/                # 自動発動スキル
     ├── create-pr/SKILL.md
     ├── review-pr/SKILL.md
+    ├── japanese-tech-writing/
+    │   ├── SKILL.md
+    │   ├── NOTICE.md
+    │   └── LICENSE
     ├── ux-laws/SKILL.md
     ├── writing-tasks/SKILL.md
     ├── screen-review/
