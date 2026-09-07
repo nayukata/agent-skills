@@ -14,6 +14,9 @@ set -euo pipefail
 
 LAYOUT="vertical"  # solos セクションのレイアウト。horizontal でラベル列の横並びテーブルに切替
 LABELS=""          # horizontal レイアウト時の列ヘッダー (カンマ区切り)。例: "上部,中盤,下部"
+COLUMNS=0          # horizontal レイアウト時の 1 行あたりの列数。0 は全部を 1 行に並べる。
+                   # 列が増えるほど 1 枚が小さくなり、5 列では文字が読めなくなるため、
+                   # 読ませたいときは 2〜3 に絞る
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -33,8 +36,16 @@ while [ $# -gt 0 ]; do
       LABELS="${1#--labels=}"
       shift
       ;;
+    --columns)
+      COLUMNS="$2"
+      shift 2
+      ;;
+    --columns=*)
+      COLUMNS="${1#--columns=}"
+      shift
+      ;;
     -h|--help)
-      echo "Usage: $0 [--layout horizontal|vertical] [--labels \"上部,中盤,下部\"] <TOPIC_DIR> [PR_NUMBER]" >&2
+      echo "Usage: $0 [--layout horizontal|vertical] [--labels \"上部,中盤,下部\"] [--columns N] <TOPIC_DIR> [PR_NUMBER]" >&2
       exit 0
       ;;
     *)
@@ -234,6 +245,21 @@ print(mapping.get(stem, ""))
 PYEOF
 }
 
+# 画像は恒久 URL へのリンクで包む。GitHub は本文の描画時に 5 分で失効する
+# 署名付き URL を画像に当てるため、素の画像だとページを開いてしばらく経った
+# 後にクリックすると「見つかりません」になる。リンク先を恒久 URL にしておけば
+# クリックのたびに新しい署名付き URL へ転送される。
+img_md() {
+  local alt="$1" url="$2" width="${3:-}"
+  if [ -n "$width" ]; then
+    # 横並びの表は列幅が中身の実寸で決まり、枚数の少ない行や実寸の違う画像で
+    # 大きさが揃わない。幅を明示して行内・行間で同じ大きさにする
+    printf '[<img alt="%s" src="%s" width="%s">](%s)' "$alt" "$url" "$width" "$url"
+  else
+    printf '[![%s](%s)](%s)' "$alt" "$url" "$url"
+  fi
+}
+
 # ----------------------------------------------------------------------------
 # 6.5. Fail fast if any asset lacks a resolved URL
 # ----------------------------------------------------------------------------
@@ -282,7 +308,7 @@ trap 'rm -f "$TEXTAREA_JSON" "$SECTION_FILE" "$BODY_FILE"' EXIT
           fi
           before_url=$(url_for "$bn")
           after_url=$(url_for "$after_bn")
-          echo "| ![${bn%.png}](${before_url}) | ![${after_bn%.png}](${after_url}) |"
+          echo "| $(img_md "${bn%.png}" "$before_url") | $(img_md "${after_bn%.png}" "$after_url") |"
         else
           solos+=("$bn")
         fi
@@ -316,10 +342,15 @@ trap 'rm -f "$TEXTAREA_JSON" "$SECTION_FILE" "$BODY_FILE"' EXIT
         echo "✗ --labels の数 (${#label_arr[@]}) と画像数 (${#solos[@]}) が一致しません" >&2
         exit 1
       fi
+      per_row="$COLUMNS"
+      [ "$per_row" -gt 0 ] 2>/dev/null || per_row="${#solos[@]}"
+      # PR 本文の幅 (約 840px) を列数で割った値。表の余白の分だけ小さくする
+      cell_width=$(( 840 / per_row - 20 ))
       header=""
       sep=""
       row=""
       idx=0
+      in_row=0
       for png in "${solos[@]}"; do
         stem="${png%.png}"
         if [ -n "$LABELS" ]; then
@@ -330,16 +361,36 @@ trap 'rm -f "$TEXTAREA_JSON" "$SECTION_FILE" "$BODY_FILE"' EXIT
         url=$(url_for "$png")
         header+="| ${label} "
         sep+="|---"
-        row+="| ![${stem}](${url}) "
+        row+="| $(img_md "$stem" "$url" "$cell_width") "
         idx=$((idx + 1))
+        in_row=$((in_row + 1))
+        # 行が埋まったら 1 つの表として書き出し、次の行を始める。
+        # 1 つの表に複数の見出し行は置けないため、行ごとに表を分ける
+        if [ "$in_row" -ge "$per_row" ]; then
+          echo "${header}|"
+          echo "${sep}|"
+          echo "${row}|"
+          echo
+          header=""; sep=""; row=""; in_row=0
+        fi
       done
-      echo "${header}|"
-      echo "${sep}|"
-      echo "${row}|"
+      if [ "$in_row" -gt 0 ]; then
+        # 端の行も列数を揃える。列が少ない表は 1 枚が表いっぱいに広がり、
+        # 他の行の 2 倍の大きさで突出する
+        while [ "$in_row" -lt "$per_row" ]; do
+          header+="| "
+          sep+="|---"
+          row+="| "
+          in_row=$((in_row + 1))
+        done
+        echo "${header}|"
+        echo "${sep}|"
+        echo "${row}|"
+      fi
     else
       for png in "${solos[@]}"; do
         url=$(url_for "$png")
-        echo "![${png%.png}](${url})"
+        img_md "${png%.png}" "$url"; echo
         echo
       done
     fi
@@ -356,7 +407,7 @@ trap 'rm -f "$TEXTAREA_JSON" "$SECTION_FILE" "$BODY_FILE"' EXIT
     fi
     bn=$(basename "$f")
     url=$(url_for "$bn")
-    echo "![${bn%.gif}](${url})"
+    img_md "${bn%.gif}" "$url"; echo
     echo
   done
 

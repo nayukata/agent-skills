@@ -90,7 +90,7 @@ UI 動作確認で撮影した PNG / WebM を `/tmp/claude-shots/<TOPIC>/` に�
 
 ```bash
 <このスキルのディレクトリ>/scripts/publish-pr.sh \
-  [--layout horizontal|vertical] [--labels "上部,中盤,下部"] \
+  [--layout horizontal|vertical] [--labels "上部,中盤,下部"] [--columns N] \
   /tmp/claude-shots/<TOPIC> [PR_NUMBER]
 ```
 
@@ -102,6 +102,10 @@ before/after ペアがあるとき (修正前/修正後の比較) は常に 2 �
 
 - `--layout vertical` (default) — 1 枚ずつ縦に並べる。画面が大きく表示されレビュアーが細部を確認しやすい。**修正の前後比較ではなく単一機能の挙動を見せたい時** や、**画像内の情報量が多い時** に向く
 - `--layout horizontal` — 列ヘッダー付きの横並び 1 行テーブル。**新規機能を紹介する時や、同一画面の上部/中部/下部などを並べて見せたい時** に向く。PR 本文が縦に長くならない代わりに、各画像は小さく表示される
+
+### 1 行あたりの列数 (`--columns`)
+
+`--layout horizontal` で画像が 4 枚以上あるときは `--columns 2` か `--columns 3` を付けて行を分ける。列が増えるほど 1 枚が小さくなり、5 列では 1 枚が 130px ほどになって文字が読めない。2 列なら 1 枚が 440px ほどで、開かなくても内容が分かる。行ごとに見出し付きの表として書き出される。
 
 ### 列ヘッダーのラベル (`--labels`)
 
@@ -132,10 +136,10 @@ before/after ペアがあるとき (修正前/修正後の比較) は常に 2 �
 ## スクリーンショット
 | 修正前 | 修正後 |
 |---|---|
-| ![01-before-list](https://github.com/user-attachments/assets/...) | ![01-after-list](https://github.com/user-attachments/assets/...) |
+| [![01-before-list](https://github.com/user-attachments/assets/...)](https://github.com/user-attachments/assets/...) | [![01-after-list](https://github.com/user-attachments/assets/...)](https://github.com/user-attachments/assets/...) |
 
 ## 動作確認
-![demo](https://github.com/user-attachments/assets/...)
+[![demo](https://github.com/user-attachments/assets/...)](https://github.com/user-attachments/assets/...)
 
 ## 元動画 (高画質)
 - [demo.webm](https://github.com/user-attachments/assets/...)
@@ -143,6 +147,8 @@ before/after ペアがあるとき (修正前/修正後の比較) は常に 2 �
 ```
 
 手書き本文は壊さない。
+
+画像は恒久 URL へのリンクで包む。GitHub は本文を描画するたびに 5 分で失効する署名付き URL を画像に当てるため、素の画像だとページを開いてしばらく経った後にクリックすると「見つかりません」になる。リンクで包むとクリック先は同じタブで開く（`target="_blank"` は GitHub が除去するため新しいタブは指定できない）。
 
 ### マージ後の清掃
 
