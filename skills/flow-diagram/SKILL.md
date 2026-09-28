@@ -53,8 +53,8 @@ description: 複数の登場人物が絡む処理の流れを HTML の図にし�
    ```
    node scripts/render.cjs <html-path> <out-dir>
    ```
-   `full.png` (全体) と、`<section id>` ごとの PNG、図の文章を書き出した `text.txt` が `<out-dir>` に出力される。撮る id を指定する必要はない。playwright が見つからない場合は下記「playwright の解決」を見る
-3. **撮った PNG を Read で確認する。** 次を見る。
+   `full.png` (全体) と、`<section id>` ごとの PNG、図の文章を書き出した `text.txt` が `<out-dir>` に出力される。PNG は節の周りに余白を付け、ライト (`<id>.png`) とダーク (`<id>-dark.png`) の両方で撮る撮る id を指定する必要はない。playwright が見つからない場合は下記「playwright の解決」を見る
+3. **撮った PNG を Read で確認する。** 配置はライトとダークで同じなので、開くのはダーク (`-dark.png`) だけでよい。次を見る。
    - 札の印がはみ出したり、名前と重なっていないか
    - `.race` や横並びの列が窮屈になっていないか (列数が多すぎる時は行を分けるか、内容を削る)
    - 同系色の背景 (`.lane.after` など) に乗った札が、背景と同化して読めなくなっていないか
@@ -82,7 +82,7 @@ npm exec -y --package=playwright -- node scripts/render.cjs <html-path> <out-dir
 
 画像のアップロードと PR 本文への埋め込みは `screen-review` スキルの `scripts/publish-pr.sh` をそのまま使う。このスキル専用のアップロード処理は持たない。
 
-1. 撮った PNG を screen-review のディレクトリ規約に合わせて配置する。`full.png` は使わず、セクション単位の PNG だけを使う。ファイル名は連番と見出しに合わせたラベルにする (before/after の対比図でない限り、ファイル名に `-before-` `-after-` という文字列を含めない。含めると publish-pr.sh が対比テーブル行として扱ってしまう)。
+1. 撮った PNG を screen-review のディレクトリ規約に合わせて配置する。`full.png` と `full-dark.png` は使わず、セクション単位の PNG をライトとダークの組で使う (`01-cast.png` と `01-cast-dark.png` のように、同じ名前の末尾に `-dark` を付ける)。ファイル名は連番と見出しに合わせたラベルにする (before/after の対比図でない限り、ファイル名に `-before-` `-after-` という文字列を含めない。含めると publish-pr.sh が対比テーブル行として扱ってしまう)。
    ```
    mkdir -p /tmp/claude-shots/<TOPIC>
    cp <out-dir>/cast.png    /tmp/claude-shots/<TOPIC>/01-cast.png
@@ -94,7 +94,7 @@ npm exec -y --package=playwright -- node scripts/render.cjs <html-path> <out-dir
    ```
 3. publish-pr.sh は、画像を PR 本文の末尾の `<!-- screen-review:start -->` 〜 `<!-- screen-review:end -->` にまとめて差し込む。図は説明の段落の直後で読ませたいので、各画像を該当する節へ移す。
    1. 現在の PR 本文を `gh pr view <PR> --json body -q .body` で取得する。手元のファイルから書き直さない (ユーザーが GitHub 上で編集している場合がある)
-   2. 差し込まれた各画像の URL (`https://github.com/user-attachments/assets/...`) を取り出し、該当する節の段落の直後に `<img width="760" alt="<図の見出し>" src="<URL>" />` で置く
+   2. 差し込まれた各画像の URL (`https://github.com/user-attachments/assets/...`) を取り出し、該当する節の段落の直後に置く。閲覧者の配色設定で切り替わるよう、`<picture><source media="(prefers-color-scheme: dark)" srcset="<ダークの URL>"><img width="760" alt="<図の見出し>" src="<ライトの URL>" /></picture>` の形にする
    3. screen-review の区間を削除する
    4. 前提の説明に当たる図 (用語表、仕組みの図など) は、本流を長くしないよう `<details>` に畳む。登場人物と動く場所の図は畳まずに概要の直後に置く
    5. 本文を点検してから `gh pr edit <PR> --body-file <file>` で更新する。PR 本文の書き方と点検は create-pr スキルに従う

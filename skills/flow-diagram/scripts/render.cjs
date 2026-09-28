@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 図の HTML を PNG に撮る。全体 1 枚 (full.png) と、id を持つ section ごとに 1 枚ずつ撮る。
+// 図の HTML を PNG に撮る。全体 1 枚 (full.png) と、id を持つ section ごとに 1 枚ずつ撮る。ライトとダークの両方で撮る。
 // 文章の点検にかけられるよう、表示される文章を text.txt にも書き出す。
 // 撮る id を決め打ちしない。section[id] を DOM から拾うので、図の構成を変えてもスクリプトは変えなくていい。
 //
@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 
 const WIDTH = 1100;
+const PADDING = 32;
 const SCALE = 2; // 文字を拡大表示しても潰れない解像度にするための倍率
 
 function loadPlaywright() {
@@ -51,15 +52,31 @@ async function main() {
   await page.goto('file://' + absHtml);
   await page.waitForTimeout(800); // Web フォント読み込みの完了待ち
 
-  const fullPath = path.join(outDir, 'full.png');
-  await page.screenshot({ path: fullPath, fullPage: true });
-  console.log(`✓ ${fullPath}`);
+  // GitHub は閲覧者の配色設定で <picture> の画像を切り替えられるので、ライト (<id>.png) とダーク (<id>-dark.png) の両方を撮る。
+  // 撮影はこのスクリプトの中で終わるため、枚数が増えても確認の手間は増えない (確認で開くのはダークだけでよい)
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.waitForTimeout(200);
+    const suffix = scheme === 'dark' ? '-dark' : '';
 
-  const ids = await page.$$eval('section[id]', (els) => els.map((el) => el.id));
-  for (const id of ids) {
-    const shotPath = path.join(outDir, `${id}.png`);
-    await page.locator(`#${id}`).screenshot({ path: shotPath });
-    console.log(`✓ ${shotPath}`);
+    const fullPath = path.join(outDir, `full${suffix}.png`);
+    await page.screenshot({ path: fullPath, fullPage: true });
+    console.log(`✓ ${fullPath}`);
+
+    const ids = await page.$$eval('section[id]', (els) => els.map((el) => el.id));
+    for (const id of ids) {
+      const shotPath = path.join(outDir, `${id}${suffix}.png`);
+      // 節の外周ぎりぎりで切ると見出しや枠が画像の端に貼り付くので、ページの背景ごと余白を付けて撮る
+      const box = await page.locator(`#${id}`).boundingBox();
+      const x = Math.max(0, box.x - PADDING);
+      const y = Math.max(0, box.y - PADDING);
+      await page.screenshot({
+        path: shotPath,
+        fullPage: true,
+        clip: { x, y, width: box.width + (box.x - x) + PADDING, height: box.height + (box.y - y) + PADDING },
+      });
+      console.log(`✓ ${shotPath}`);
+    }
   }
 
   // 文章の点検は段落単位で判定するため、見出し・段落・行ごとに空行で区切って書き出す
