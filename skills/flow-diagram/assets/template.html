@@ -1,0 +1,269 @@
+<title>[処理名] の流れ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --ink: #1b2330;
+    --muted: #5b6574;
+    --ground: #f2f4f7;
+    --card: #ffffff;
+    --line: #d6dce4;
+    /* 登場人物ごとの色。動く場所の数だけ用意する。名前は場所の実名に合わせて変える (例: --ios, --app, --page, --web) */
+    --a: #5f6b7a;      --a-bg: #e9edf2;
+    --b: #6a4bb5;      --b-bg: #efe9fb;
+    --c: #1f64c8;      --c-bg: #e6effc;
+    --d: #a4620a;      --d-bg: #fcf0dc;
+    --e: #1d7a4a;      --e-bg: #e3f3e9;
+    --bad: #b8412a;    --bad-bg: #fbe9e4;
+    --good: #1d7a4a;   --good-bg: #e3f3e9;
+    --sans: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e7ecf3; --muted: #a4aebc; --ground: #11151b; --card: #1a2029; --line: #313a47;
+      --a: #b3bdca; --a-bg: #262d37; --b: #c1abf5; --b-bg: #2c2440; --c: #86b4ff; --c-bg: #1c2b44;
+      --d: #f0bf6e; --d-bg: #3a2c14; --e: #79d3a0; --e-bg: #173024;
+      --bad: #f28d73; --bad-bg: #3b221c; --good: #79d3a0; --good-bg: #173024;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e7ecf3; --muted: #a4aebc; --ground: #11151b; --card: #1a2029; --line: #313a47;
+    --a: #b3bdca; --a-bg: #262d37; --b: #c1abf5; --b-bg: #2c2440; --c: #86b4ff; --c-bg: #1c2b44;
+    --d: #f0bf6e; --d-bg: #3a2c14; --e: #79d3a0; --e-bg: #173024;
+    --bad: #f28d73; --bad-bg: #3b221c; --good: #79d3a0; --good-bg: #173024;
+    color-scheme: dark;
+  }
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.7; }
+  .wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 32px 64px; display: grid; gap: 48px; }
+  header h1 { font-size: 27px; margin: 0 0 8px; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); max-width: 64ch; }
+  section { display: grid; gap: 14px; }
+  h2 { font-size: 21px; margin: 0; text-wrap: balance; }
+  section > p { margin: 0; color: var(--muted); max-width: 66ch; }
+
+  /* 登場人物の札。左端の印 (::before) が「どこで動くか」を示す。印は名前と重ならない言葉にする */
+  .who { display: inline-flex; align-items: center; justify-content: flex-start; min-width: 14em; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .who.a { color: var(--a); background: var(--a-bg); }
+  .who.b { color: var(--b); background: var(--b-bg); }
+  .who.c { color: var(--c); background: var(--c-bg); }
+  .who.d { color: var(--d); background: var(--d-bg); }
+  .who.e { color: var(--e); background: var(--e-bg); }
+  .who::before { font-size: 10.5px; font-weight: 700; line-height: 1; padding: 3px 5px; margin-right: 7px; border-radius: 4px; background: var(--card); color: var(--muted); border: 1px solid var(--line); }
+  /* 印の対応はプロジェクトごとに決める。同じ場所で動く登場人物には同じ印を付ける */
+  .who.a::before { content: "場所A"; }
+  .who.b::before { content: "場所B"; }
+  .who.c::before { content: "場所C"; }
+  .who.d::before, .who.e::before { content: "外部"; }
+
+  /* 登場人物と、それぞれが動く場所の入れ子図。常に最初のセクションに置く */
+  .map { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; min-width: 760px; }
+  .zone { border: 1.5px dashed var(--muted); border-radius: 12px; padding: 12px; display: grid; gap: 10px; align-content: start; }
+  .zone.outer { border-style: solid; border-color: var(--ink); }
+  .zone.z-b { border-color: var(--b); background: var(--b-bg); }
+  .zone.z-c { border-color: var(--c); background: var(--c-bg); }
+  .zone.net { border-color: var(--e); }
+  .zl { font-size: 13.5px; font-weight: 700; }
+  .zone.z-b > .zl { color: var(--b); }
+  .zone.z-c > .zl { color: var(--c); }
+  .zone.net > .zl { color: var(--e); }
+  .actor { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+  .actor .who { justify-self: start; }
+  .actor p { margin: 0; font-size: 14px; color: var(--muted); }
+  .who.e { color: var(--e); background: var(--e-bg); }
+
+  /* 用語表・フラットなカード一覧に使う。用語表以外に「その他」の短い一覧にも流用できる */
+  .cast { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+  .cast div { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .cast div .who { justify-self: start; }
+  .cast p { margin: 0; font-size: 14px; color: var(--muted); }
+
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; cursor: zoom-in; overflow-x: auto; }
+  figure:focus-visible { outline: 2px solid var(--c); outline-offset: 3px; }
+
+  /* 縦の行 flow。札 (誰が) + 何をする、の順に並べる */
+  .flow { display: grid; gap: 0; min-width: 560px; }
+  .row { display: grid; grid-template-columns: 15em 1fr; gap: 14px; align-items: center; padding: 8px 0; }
+  .row + .row { border-top: 1px dashed var(--line); }
+  .row .what { font-size: 15.5px; }
+  .row.r3 { grid-template-columns: 5.5em 15em 1fr; } /* 実測タイムライン用。時刻列を追加 */
+  .row .tm { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row .what small { display: block; color: var(--muted); font-size: 13px; }
+  .row.pause { background: repeating-linear-gradient(-45deg, transparent 0 8px, var(--ground) 8px 16px); border-radius: 6px; } /* 中断している時間 */
+
+  /* 変更前/変更後の左右レーン */
+  .fork { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+  .lane { border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; align-content: start; }
+  .lane.before { background: var(--bad-bg); }
+  .lane.after { background: var(--good-bg); }
+  .lane h3 { margin: 0; font-size: 13px; letter-spacing: .08em; }
+  .lane.before h3 { color: var(--bad); }
+  .lane.after h3 { color: var(--good); }
+  .lane .step { display: grid; grid-template-columns: 1fr; justify-items: start; gap: 4px; font-size: 15px; }
+  /* レーンの背景と同系色の札は、札の背景をカードに戻さないと文字が読めなくなる */
+  .lane.after .who.e { background: var(--card); }
+  .lane .end { font-weight: 700; font-size: 15.5px; }
+  .lane.before .end { color: var(--bad); }
+  .lane.after .end { color: var(--good); }
+
+  /* 並行の表。行が時間、列が経路 */
+  .race { display: grid; grid-template-columns: 6em 1fr 1fr; min-width: 780px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .race > div { padding: 10px 12px; border-top: 1px solid var(--line); display: grid; gap: 6px; align-content: start; font-size: 15px; }
+  .race .h { background: var(--ground); font-weight: 700; font-size: 14px; border-top: 0; }
+  .race .h small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+  .race .t { font-family: var(--mono); color: var(--muted); font-size: 13px; background: var(--ground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .race .who { justify-self: start; }
+  .race .act { display: grid; justify-items: start; gap: 6px; } /* justify-items を外すと列内の札が中央寄せになって崩れる */
+  .race .empty { color: var(--muted); font-size: 13px; }
+  .mark { border-radius: 6px; padding: 4px 8px; font-weight: 700; font-size: 13.5px; justify-self: start; }
+  .mark.before { background: var(--bad-bg); color: var(--bad); }
+  .mark.after { background: var(--good-bg); color: var(--good); }
+
+  .foot { color: var(--muted); font-size: 13.5px; margin: 10px 0 0; }
+  @media (max-width: 640px) { .fork { grid-template-columns: 1fr; } }
+
+  .lightbox { position: fixed; inset: 0; background: rgba(10, 14, 20, .82); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 10; cursor: zoom-out; }
+  .lightbox .inner { background: var(--card); border-radius: 12px; padding: 24px; width: min(1200px, 96vw); max-height: 92vh; overflow: auto; cursor: auto; font-size: 18px; }
+  .lightbox figure { border: 0; padding: 0; cursor: auto; }
+  @media (prefers-reduced-motion: no-preference) { .lightbox { animation: fade .15s ease-out; } @keyframes fade { from { opacity: 0 } } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>[処理名] の流れ</h1>
+    <p>[この図が何を説明するかを1〜2文で。札の左端の印が、それぞれどこで動くかを表すことも書く。図はクリックで拡大できます。]</p>
+  </header>
+
+  <!-- 1. 登場人物と、それぞれが動く場所の入れ子図。常にこれを最初に置く -->
+  <section id="cast">
+    <h2>登場人物と、それぞれが動く場所</h2>
+    <p>[入れ子構造で伝えたいこと。例: 同じ端末の中でも別の実行主体である、など]</p>
+    <figure tabindex="0">
+      <div class="map">
+        <div class="zone outer"><div class="zl">場所Aの中</div>
+          <div class="actor"><span class="who a">登場人物1</span><p>[何を受け持つか。1〜2文]</p></div>
+          <div class="zone z-b"><div class="zl">場所B</div>
+            <div class="actor"><span class="who b">登場人物2</span><p>[何を受け持つか]</p></div>
+            <div class="zone z-c"><div class="zl">場所C</div>
+              <div class="actor"><span class="who c">登場人物3</span><p>[何を受け持つか]</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="zone net"><div class="zl">インターネットの先</div>
+          <div class="actor"><span class="who e">外部サービス</span><p>[何を受け持つか]</p></div>
+          <div class="actor"><span class="who d">別の外部サービス</span><p>[何を受け持つか]</p></div>
+        </div>
+      </div>
+      <p class="foot">[入れ子図の下に、補足の注記があれば1文で]</p>
+    </figure>
+  </section>
+
+  <!-- 2. 用語表。曖昧な総称 (例: 「トークン」「設定」) が出てくる図に置く。無ければ省略してよい -->
+  <section id="terms">
+    <h2>この図に出てくる用語</h2>
+    <div class="cast">
+      <div><strong>[種類名1]</strong><p>[何のためのものか。他の種類とどう違うか]</p></div>
+      <div><strong>[種類名2]</strong><p>[何のためのものか]</p></div>
+    </div>
+  </section>
+
+  <!-- 3. 縦の行 flow。基本の流れはこれで描く -->
+  <section id="basic-flow">
+    <h2>[この節が説明する流れの見出し]</h2>
+    <p>[前提や背景を1〜3文で]</p>
+    <figure tabindex="0">
+      <div class="flow">
+        <div class="row"><span class="who a">登場人物1</span><span class="what">[何をするか]<small>[補足があれば]</small></span></div>
+        <div class="row"><span class="who b">登場人物2</span><span class="what">[何をするか]</span></div>
+        <div class="row pause"><span class="who c">登場人物3</span><span class="what">[中断している時間があれば pause クラスで]</span></div>
+      </div>
+    </figure>
+  </section>
+
+  <!-- 4. 変更前/変更後の左右レーン。分岐して結末が変わる所に使う -->
+  <section id="before-after">
+    <h2>[分岐が起きる場面の見出し]</h2>
+    <p>[分岐の前提を1〜2文で]</p>
+    <figure tabindex="0">
+      <div class="flow">
+        <div class="row"><span class="who a">登場人物1</span><span class="what">[分岐が起きる直前までの共通の流れ]</span></div>
+      </div>
+      <div class="fork">
+        <div class="lane before">
+          <h3>変更前</h3>
+          <div class="step"><span class="who b">登場人物2</span><span>[変更前の挙動]</span></div>
+          <div class="end">→ [結末]</div>
+        </div>
+        <div class="lane after">
+          <h3>変更後</h3>
+          <div class="step"><span class="who b">登場人物2</span><span>[変更後の挙動]</span></div>
+          <div class="end">→ [結末]</div>
+        </div>
+      </div>
+    </figure>
+  </section>
+
+  <!-- 5. 並行の表 race。同時に進む2つの処理を比べる時に使う -->
+  <section id="race">
+    <h2>[同時に進む2つの処理の見出し]</h2>
+    <p>[なぜ同時に始まるのかを本文に書く]</p>
+    <figure tabindex="0">
+      <div class="race">
+        <div class="h">時間</div>
+        <div class="h">A. [経路Aの名前]<small>[経路Aの特徴]</small></div>
+        <div class="h">B. [経路Bの名前]<small>[経路Bの特徴]</small></div>
+
+        <div class="t">0秒</div>
+        <div><span class="act"><span class="who a">登場人物1</span><span>[Aで起きること]</span></span></div>
+        <div><span class="act"><span class="who b">登場人物2</span><span>[Bで起きること]</span></span></div>
+
+        <div class="t"></div>
+        <div><span class="mark before">変更前はここで進む</span></div>
+        <div class="empty">[Bはまだ続いている]</div>
+
+        <div class="t">[実測値]</div>
+        <div class="empty"></div>
+        <div><span class="mark after">変更後はここまで待つ</span></div>
+      </div>
+      <p class="foot">[実測値の根拠を1文で]</p>
+    </figure>
+  </section>
+
+  <!-- 6. 実測タイムライン。row.r3 (時刻列付き) で実機・実環境の観測結果を示す -->
+  <section id="observed">
+    <h2>実機での確認</h2>
+    <p>[確認した環境・条件を1〜2文で]</p>
+    <figure tabindex="0">
+      <div class="flow">
+        <div class="row r3"><span class="tm">[時刻]</span><span class="who a">登場人物1</span><span class="what">[起きたこと]</span></div>
+        <div class="row r3"><span class="tm">[時刻]</span><span class="who b">登場人物2</span><span class="what">[起きたこと]</span></div>
+      </div>
+      <p class="foot">[別条件での確認結果があれば1文で]</p>
+    </figure>
+  </section>
+</div>
+
+<script>
+  document.querySelectorAll('figure').forEach((fig) => {
+    const open = () => {
+      const box = document.createElement('div');
+      box.className = 'lightbox';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-label', '拡大表示。外側をクリックすると閉じます');
+      const inner = document.createElement('div');
+      inner.className = 'inner';
+      inner.appendChild(fig.cloneNode(true));
+      box.appendChild(inner);
+      const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
+      const onKey = (e) => { if (e.key === 'Escape') close(); };
+      box.addEventListener('click', (e) => { if (e.target === box) close(); });
+      document.addEventListener('keydown', onKey);
+      document.body.appendChild(box);
+    };
+    fig.addEventListener('click', open);
+    fig.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
+  });
+</script>
