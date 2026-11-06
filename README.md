@@ -48,6 +48,18 @@ cd agent-skills
 - `--copy`: symlink の代わりに実体コピーする。サンドボックスなどで symlink 先を読めないエージェント向けのフォールバック。
 - `--agent-dir <path>`: 上記3つに加えて、任意のエージェントのスキルディレクトリを追加で対象にする（複数指定可）。
 
+### ai-writing-signs で TypeSafe の Jev を使う
+
+`ai-writing-signs` の検出器は、Node.js (18 以上) か Python 3 のどちらかがあれば動く。Windows・macOS・Linux に対応する。
+
+正規表現の検出器に加えて、TypeSafe の Jev で1文ずつ判定することもできる。Jev を使わなくても点検はできる。使う場合は、点検を頼んだときにエージェントがキーの入力画面をブラウザーで開くので、画面の手順に沿って進める。
+
+1. TypeSafe のアカウントが無ければ、[TypeSafe のコンソール](https://console.typesafe.ai/) で登録する。毎月5ドル分のクレジットが付与され、その範囲なら無料で使える。条件は変わることがあるので、TypeSafe のサイトで確かめる。
+2. [キーの作成ページ](https://console.typesafe.ai/keys) で API キーを作る。
+3. 作ったキーを入力画面に貼り、保存を押す。
+
+キーは、Windows では `%APPDATA%\typesafe\api_key`、それ以外では `~/.config/typesafe/api_key` (`XDG_CONFIG_HOME` があればその下) に保存される。macOS と Linux では、本人だけが読める権限で書く。環境変数 `TYPESAFE_API_KEY` があれば、ファイルより優先する。Jev を使うと、点検のたびに、点検する文章が TypeSafe の API に送られる。
+
 ## 配布している plugin
 
 すべてタスクの内容に応じてエージェントが自動で発動するスキル。
@@ -96,7 +108,7 @@ cd agent-skills
     ├── ux-laws/SKILL.md
     ├── ai-writing-signs/
     │   ├── SKILL.md
-    │   ├── scripts/       # 正規表現の検出器 / Jev による判定
+    │   ├── scripts/       # 正規表現の検出器 / Jev による判定 (Node.js 版と Python 版)
     │   └── evals/         # スキルを試すための評価 (スキル動作には不要)
     ├── writing-tasks/SKILL.md
     ├── screen-review/

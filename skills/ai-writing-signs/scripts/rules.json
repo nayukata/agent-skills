@@ -1,0 +1,248 @@
+{
+  "whitespace": "[\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]",
+  "blank_pattern": "^<WS>*$",
+  "prose_skip_heads": [
+    "^#",
+    "^[-*]<WS>",
+    "^>",
+    "^\\|"
+  ],
+  "checks": [
+    {
+      "kind": "regex",
+      "label": "予告の型",
+      "pattern": "結論から(言|い)うと|結論から言えば|この記事では|本記事では|本稿では",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "否定の対句",
+      "pattern": "ではなく|だけでなく|というより(も)?|のみならず",
+      "min": 3
+    },
+    {
+      "kind": "regex",
+      "label": "空虚な強調",
+      "pattern": "非常に|極めて|本質的に|根本的に|不可欠|大いに",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "「〜の形」でぼかす",
+      "pattern": "形にな(る|り|っ)|の形で|形にする|形に寄|という形",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "「〜の側」の構文",
+      "pattern": "の側(で|の|に|は|が|を|から|へ|と|も|、)",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "鉤括弧の強調 (引用でない可能性)",
+      "pattern": "「[^」]{1,12}」(と判定|という|として|と呼|的な|を意識|を重視)",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "「〇〇」の〇〇は",
+      "pattern": "「[^」]+」の[^、。「」]{1,10}は",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "疑問符の無い問いかけの台詞",
+      "pattern": "^[ \\u3000]*「(?![^」]*[？?])[^」]*(の|よね|だっけ|っけ|何|なに|なんで|どこが|誰が|は|どう|どうって|どこ|誰|いつ|どういうとこ|どういうところ)」$",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "逆接の「のに」の後に依頼・勧誘",
+      "pattern": "のに、[^。」]*(ください|てほしい|しよう|しなさい)",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "動詞の句を鉤括弧で名詞扱い (引用・画面の文言なら対象外)",
+      "pattern": "「[^」「]{2,}[うくぐすつぬぶむるたい]」(は|が|も|こそ)",
+      "min": 1
+    },
+    {
+      "kind": "regex",
+      "label": "太字の乱用 (表以外の1行に2か所以上)",
+      "pattern": "^[^|]*\\*\\*[^*]+\\*\\*.*\\*\\*[^*]+\\*\\*",
+      "min": 1
+    },
+    {
+      "kind": "bullet_run",
+      "label": "見出し付き箇条書きの連続 (3 行以上)",
+      "pattern": "^[ \\t]*[-*] \\*\\*[^*]+\\*\\*[:：]",
+      "min_run": 3
+    },
+    {
+      "kind": "ending_repeat",
+      "label": "文末の単調 (段落内で同語尾 4 回以上)",
+      "blank_pattern": "^[ \\t]*$",
+      "endings": [
+        {
+          "name": "です",
+          "text": "です。",
+          "min": 4
+        },
+        {
+          "name": "ます",
+          "text": "ます。",
+          "min": 4
+        },
+        {
+          "name": "になります",
+          "text": "になります。",
+          "min": 2
+        }
+      ]
+    },
+    {
+      "kind": "heading_only",
+      "label": "見出しだけの節 (同じか浅い階層の見出しが本文なしで続く)",
+      "heading_pattern": "^#+ ",
+      "depth_pattern": "^#+",
+      "blank_pattern": "^[ \\t]*$"
+    },
+    {
+      "kind": "opening_repeat",
+      "label": "段落の書き出しの反復 (同じ書き出しが 2 段落以上)",
+      "length": 4,
+      "min_paragraphs": 2,
+      "strip_prefix": "^\\*\\*"
+    },
+    {
+      "kind": "short_sentence_shortage",
+      "label": "短い文の不足 (8 文以上あるのに 20 字以下の文が 1 つ以下)",
+      "sentence_pattern": "[^。]*。",
+      "min_total": 8,
+      "max_short": 1,
+      "short_len": 20
+    }
+  ],
+  "jev": {
+    "api_url": "https://api.typesafe.ai/v1/systemone",
+    "model": "jev-latest",
+    "console_url": "https://console.typesafe.ai/keys",
+    "min_sentence_len": 5,
+    "thresholds": {
+      "actor_missing": 0.5,
+      "actor_shift": 0.4,
+      "thing_acts": 0.35,
+      "kagi_emphasis": 0.5,
+      "odd_collocation": 0.5,
+      "human_emphasis": 0.35,
+      "unknowable": 0.5
+    },
+    "category_order": [
+      "actor_missing",
+      "actor_shift",
+      "thing_acts",
+      "kagi_emphasis",
+      "odd_collocation",
+      "human_emphasis",
+      "unknowable"
+    ],
+    "questions": {
+      "actor_missing": {
+        "label": "主語や立場があいまい (主体が書かれていない)",
+        "type": "noul",
+        "instructions": "`sentence` の中に、誰が、または何がその動作をするのかが `sentence` にも `paragraph` のそれより前の文にも書かれておらず、読み手が主体を推測しなければならない動詞があるか。書き手自身の作業 (直しました、確認しました、移しました) の主語が省かれているだけの場合は含めない。",
+        "criteria": {
+          "true": "主体を推測しないと読めない動詞がある",
+          "false": "すべての動作の主体が文脈から一意に分かる"
+        }
+      },
+      "actor_shift": {
+        "label": "主語や立場があいまい (途中で入れ替わる)",
+        "type": "noul",
+        "instructions": "`sentence` の途中で、動作の主体または視点 (書き手、システム、利用者、運用者など) が、断りなく別のものに入れ替わっているか。",
+        "criteria": {
+          "true": "1 文の中で主体か視点が切り替わり、読み手が読み直す必要がある",
+          "false": "1 文を通して主体と視点が一貫している、または切り替わりが明示されている"
+        }
+      },
+      "thing_acts": {
+        "label": "モノに人の動作をさせる",
+        "type": "noul",
+        "instructions": "`sentence` で、情報、データ、設定、画面、ライブラリなどのモノが、判定する、待つ、決める、丸める、持つのような、本来は人や仕組みが行う動作の主語になっているか。API が応答を返す、画面が文言を表示する、テストが通過する、のような技術文書の慣用は含めない。",
+        "criteria": {
+          "true": "モノが人の動作の主語になっている",
+          "false": "動作の主語は人か仕組みである、または技術文書の慣用の範囲である"
+        }
+      },
+      "kagi_emphasis": {
+        "label": "概念を鉤括弧で強調",
+        "type": "noul",
+        "instructions": "`sentence` に、引用、画面の文言、メッセージの文面のいずれでもない言葉を、目立たせる目的で鉤括弧「」で囲んだ箇所があるか。",
+        "criteria": {
+          "true": "概念や評価の言葉を鉤括弧で強調している",
+          "false": "鉤括弧が無い、または鉤括弧の中身は実際の文言の引用である"
+        }
+      },
+      "odd_collocation": {
+        "label": "名詞に普段付かない動詞を当てる",
+        "type": "noul",
+        "instructions": "`sentence` に、名詞と動詞の組み合わせが、日本語のエンジニアが同僚とのチャットで普段使う組み合わせになっていない箇所があるか。例: Cookie には「設定する」が普通で、「Cookie を書く」は不自然。機能や表示には「有効になる」「表示される」が普通で、「案内が働く」は不自然。",
+        "criteria": {
+          "true": "普段は使わない動詞が名詞に当てられている箇所がある",
+          "false": "名詞と動詞の組み合わせはどれも普段使うものである。「Cookie に書き込む」「Cookie の書き込み」のような言い方も普段使うものに含める"
+        }
+      },
+      "human_emphasis": {
+        "label": "人が行うことを強調するだけの言葉を付ける",
+        "type": "noul",
+        "instructions": "`sentence` に、人が行うことを強調するためだけに足された、目で、手で、自分の目で、のような言葉があるか。",
+        "criteria": {
+          "true": "人が行うことを強調するためだけの言葉があり、削っても意味が変わらない",
+          "false": "そのような言葉が無い、または目を通す、手を入れる、目視確認、手作業のように普段から使う決まった言い方である"
+        }
+      },
+      "unknowable": {
+        "label": "確かめようのないこと・知り得ないことの断定",
+        "type": "noul",
+        "instructions": "`sentence` に、語り手がその場で確かめようのないこと、またはその時点で知り得なかったはずのことを、事実として言い切っている箇所があるか。",
+        "criteria": {
+          "true": "確かめようのないことを言い切っている",
+          "false": "見聞きしたこと、推測と分かる書き方、または語り手が知っているはずのことだけを書いている"
+        }
+      }
+    },
+    "question_selection": [
+      {
+        "id": "actor_missing"
+      },
+      {
+        "id": "actor_shift"
+      },
+      {
+        "id": "thing_acts"
+      },
+      {
+        "id": "odd_collocation"
+      },
+      {
+        "id": "kagi_emphasis",
+        "contains_all": [
+          "「",
+          "」"
+        ]
+      },
+      {
+        "id": "human_emphasis",
+        "contains_any": [
+          "目",
+          "手"
+        ]
+      },
+      {
+        "id": "unknowable"
+      }
+    ]
+  }
+}

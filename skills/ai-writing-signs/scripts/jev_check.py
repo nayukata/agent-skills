@@ -3,151 +3,441 @@
 標準ライブラリのみで動く。
 """
 import concurrent.futures
+import errno
+import hmac
+import http.client
 import json
 import os
 import re
+import secrets
+import shutil
+import socket
 import ssl
+import subprocess
 import sys
+import tempfile
+import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-API_URL = "https://api.typesafe.ai/v1/systemone"
-MODEL = "jev-latest"
+
+
+def _setup_stdio():
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", newline="\n")
+        except Exception:
+            try:
+                stream.reconfigure(errors="replace", newline="\n")
+            except Exception:
+                pass
+
+
+_setup_stdio()
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SELF = os.path.join(HERE, os.path.basename(__file__))
+RULES_PATH = os.path.join(HERE, "rules.json")
+try:
+    with open(RULES_PATH, encoding="utf-8") as _f:
+        _TOP_RULES = json.load(_f)
+    RULES = _TOP_RULES["jev"]
+    API_URL = RULES["api_url"]
+    MODEL = RULES["model"]
+    CONSOLE_URL = RULES["console_url"]
+    THRESHOLDS = RULES["thresholds"]
+    QUESTIONS = RULES["questions"]
+    CATEGORY_ORDER = RULES["category_order"]
+    MIN_SENTENCE_LEN = RULES["min_sentence_len"]
+    if not isinstance(QUESTIONS, dict) or not isinstance(RULES["question_selection"], list):
+        raise ValueError("bad shape")
+    if not isinstance(_TOP_RULES.get("checks"), list) or not isinstance(_TOP_RULES.get("whitespace"), str):
+        raise ValueError("bad shape")
+    for _sel in RULES["question_selection"]:
+        if not isinstance(_sel, dict) or _sel.get("id") not in QUESTIONS or not isinstance(QUESTIONS[_sel["id"]], dict):
+            raise ValueError("bad shape")
+        for _k in ("contains_all", "contains_any"):
+            if _k in _sel and not (isinstance(_sel[_k], list) and all(isinstance(_t, str) for _t in _sel[_k])):
+                raise ValueError("bad shape")
+except (OSError, ValueError, KeyError, TypeError):
+    sys.stderr.write("rules.json を読めない: %s\n" % RULES_PATH)
+    sys.exit(2)
+SYSTEM_PYTHON = "/usr/bin/python3"
+REEXEC_ENV = "AI_WRITING_SIGNS_REEXEC"
+CERT_ERROR_MESSAGE = (
+    "この python3 ({python}) では、TypeSafe API の証明書を確かめられない。"
+    "python.org 版なら、付属の「Install Certificates.command」を実行する。"
+    "macOS なら、xcode-select --install のあと /usr/bin/python3 で実行してもよい。"
+)
 TIMEOUT = 60
 RETRY_DELAYS = (1, 3)  # 429・5xx・タイムアウト・通信断はこの間隔で最大2回まで再試行する
-
-# 判定ごとに確率の出方が違い、該当文でも0.4〜0.7にとどまる判定があるため、しきい値を判定ごとに分けている。
-THRESHOLDS = {
-    "actor_missing": 0.5,
-    "actor_shift": 0.4,
-    "thing_acts": 0.35,
-    "kagi_emphasis": 0.5,
-    "odd_collocation": 0.5,
-    "human_emphasis": 0.35,
-    "unknowable": 0.5,
-}
-
-# レビューしやすさのため、質問文をここに集約する
-QUESTIONS = {
-    "actor_missing": {
-        "label": "主語や立場があいまい (主体が書かれていない)",
-        "type": "noul",
-        "instructions": (
-            "`sentence` の中に、誰が、または何がその動作をするのかが `sentence` にも `paragraph` "
-            "のそれより前の文にも書かれておらず、読み手が主体を推測しなければならない動詞があるか。"
-            "書き手自身の作業 (直しました、確認しました、移しました) の主語が省かれているだけの場合は"
-            "含めない。"
-        ),
-        "criteria": {
-            "true": "主体を推測しないと読めない動詞がある",
-            "false": "すべての動作の主体が文脈から一意に分かる",
-        },
-    },
-    "actor_shift": {
-        "label": "主語や立場があいまい (途中で入れ替わる)",
-        "type": "noul",
-        "instructions": (
-            "`sentence` の途中で、動作の主体または視点 (書き手、システム、利用者、運用者など) が、"
-            "断りなく別のものに入れ替わっているか。"
-        ),
-        "criteria": {
-            "true": "1 文の中で主体か視点が切り替わり、読み手が読み直す必要がある",
-            "false": "1 文を通して主体と視点が一貫している、または切り替わりが明示されている",
-        },
-    },
-    "thing_acts": {
-        "label": "モノに人の動作をさせる",
-        "type": "noul",
-        "instructions": (
-            "`sentence` で、情報、データ、設定、画面、ライブラリなどのモノが、判定する、待つ、決める、"
-            "丸める、持つのような、本来は人や仕組みが行う動作の主語になっているか。API が応答を返す、"
-            "画面が文言を表示する、テストが通過する、のような技術文書の慣用は含めない。"
-        ),
-        "criteria": {
-            "true": "モノが人の動作の主語になっている",
-            "false": "動作の主語は人か仕組みである、または技術文書の慣用の範囲である",
-        },
-    },
-    "kagi_emphasis": {
-        "label": "概念を鉤括弧で強調",
-        "type": "noul",
-        "instructions": (
-            "`sentence` に、引用、画面の文言、メッセージの文面のいずれでもない言葉を、目立たせる目的で"
-            "鉤括弧「」で囲んだ箇所があるか。"
-        ),
-        "criteria": {
-            "true": "概念や評価の言葉を鉤括弧で強調している",
-            "false": "鉤括弧が無い、または鉤括弧の中身は実際の文言の引用である",
-        },
-    },
-    "odd_collocation": {
-        "label": "名詞に普段付かない動詞を当てる",
-        "type": "noul",
-        "instructions": (
-            "`sentence` に、名詞と動詞の組み合わせが、日本語のエンジニアが同僚とのチャットで普段使う"
-            "組み合わせになっていない箇所があるか。例: Cookie には「設定する」が普通で、"
-            "「Cookie を書く」は不自然。機能や表示には「有効になる」「表示される」が普通で、"
-            "「案内が働く」は不自然。"
-        ),
-        "criteria": {
-            "true": "普段は使わない動詞が名詞に当てられている箇所がある",
-            "false": (
-                "名詞と動詞の組み合わせはどれも普段使うものである。"
-                "「Cookie に書き込む」「Cookie の書き込み」のような言い方も普段使うものに含める"
-            ),
-        },
-    },
-    # 除外する言い方を instructions に書くと該当文まで 0.2 前後に沈むため、criteria の false に置いている
-    "human_emphasis": {
-        "label": "人が行うことを強調するだけの言葉を付ける",
-        "type": "noul",
-        "instructions": (
-            "`sentence` に、人が行うことを強調するためだけに足された、目で、手で、自分の目で、"
-            "のような言葉があるか。"
-        ),
-        "criteria": {
-            "true": "人が行うことを強調するためだけの言葉があり、削っても意味が変わらない",
-            "false": (
-                "そのような言葉が無い、または目を通す、手を入れる、目視確認、手作業のように"
-                "普段から使う決まった言い方である"
-            ),
-        },
-    },
-    "unknowable": {
-        "label": "確かめようのないこと・知り得ないことの断定",
-        "type": "noul",
-        "instructions": (
-            "`sentence` に、語り手がその場で確かめようのないこと、またはその時点で知り得なかったはずのことを、"
-            "事実として言い切っている箇所があるか。"
-        ),
-        "criteria": {
-            "true": "確かめようのないことを言い切っている",
-            "false": "見聞きしたこと、推測と分かる書き方、または語り手が知っているはずのことだけを書いている",
-        },
-    },
-}
-CATEGORY_ORDER = [
-    "actor_missing",
-    "actor_shift",
-    "thing_acts",
-    "kagi_emphasis",
-    "odd_collocation",
-    "human_emphasis",
-    "unknowable",
-]
-
-# 箇条書きの短い項目 (「次の項目。」のような5文字) も判定対象に残すための下限
-MIN_SENTENCE_LEN = 5
+SETUP_TIMEOUT = 10 * 60
 
 
 def usage_exit():
-    print("usage: jev_check.py <file>", file=sys.stderr)
+    print("usage: jev_check.py <file>\n       jev_check.py --setup", file=sys.stderr)
     sys.exit(2)
 
 
+class KeyPathError(Exception):
+    pass
+
+
+def _abs_home():
+    home = os.path.expanduser("~")
+    return home if home != "~" and os.path.isabs(home) else None
+
+
+def key_file_path():
+    if sys.platform == "win32":
+        app_data = os.environ.get("APPDATA", "")
+        if not (app_data and os.path.isabs(app_data)):
+            profile = os.environ.get("USERPROFILE", "")
+            if not (profile and os.path.isabs(profile)):
+                raise KeyPathError()
+            app_data = os.path.join(profile, "AppData", "Roaming")
+        return os.path.join(app_data, "typesafe", "api_key")
+    base = os.environ.get("XDG_CONFIG_HOME", "")
+    # XDG の決まりでは、相対パスの XDG_CONFIG_HOME は無視する
+    if not os.path.isabs(base):
+        home = _abs_home()
+        if home is None:
+            raise KeyPathError()
+        base = os.path.join(home, ".config")
+    return os.path.join(base, "typesafe", "api_key")
+
+
+class KeyFileError(Exception):
+    pass
+
+
+def load_key():
+    """(キー, 出どころの説明) を返す。キーが無ければ ("", None)。"""
+    # エージェントが動かすシェルはシェルの設定ファイルを読まないことが多いので、環境変数が無ければファイルを見る
+    key = os.environ.get("TYPESAFE_API_KEY", "").strip()
+    if key:
+        return key, "環境変数 TYPESAFE_API_KEY"
+    try:
+        path = key_file_path()
+    except KeyPathError:
+        return "", None
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
+        return "", None
+    except OSError:
+        raise KeyFileError(path) from None
+    try:
+        # メモ帳などで保存すると先頭に BOM が付くので utf-8-sig で読む
+        with open(path, encoding="utf-8-sig") as f:
+            lines = [line.strip() for line in f]
+    except (OSError, ValueError):
+        raise KeyFileError(path) from None
+    key = next((line for line in lines if line), "")
+    return key, (path if key else None)
+
+
+def shell_quote(p):
+    return p if re.fullmatch(r"[A-Za-z0-9_/.:\\-]+", p) else '"%s"' % p
+
+
+def setup_command():
+    return "%s %s --setup" % (shell_quote(sys.executable), shell_quote(SELF))
+
+
+def cert_error_exit():
+    """python.org 版の python3 は、証明書を別に入れないと HTTPS が通らない。
+
+    macOS で開発者ツールが入っていれば、付属の python3 で同じ引数のまま実行し直す。
+    """
+    can_reexec = (
+        sys.platform == "darwin"
+        and not os.environ.get(REEXEC_ENV)
+        and os.path.exists(SYSTEM_PYTHON)
+        and os.path.realpath(sys.executable) != os.path.realpath(SYSTEM_PYTHON)
+        and has_developer_tools()
+    )
+    if can_reexec:
+        os.environ[REEXEC_ENV] = "1"
+        sys.stdout.flush()
+        sys.stderr.flush()
+        try:
+            os.execv(SYSTEM_PYTHON, [SYSTEM_PYTHON, SELF] + sys.argv[1:])
+        except OSError:
+            os.environ.pop(REEXEC_ENV, None)
+    print(CERT_ERROR_MESSAGE.format(python=sys.executable), file=sys.stderr)
+    sys.exit(5)
+
+
+def has_developer_tools():
+    # 開発者ツールが無いと /usr/bin/python3 はインストールを促す画面を出すだけなので、先に確かめる
+    try:
+        return subprocess.run(["/usr/bin/xcode-select", "-p"], capture_output=True, timeout=5).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def check_certificates():
+    """キーを入力させる前に、この python3 で API に HTTPS で繋がるかだけを確かめる。"""
+    host = urllib.parse.urlparse(API_URL).hostname
+    try:
+        with socket.create_connection((host, 443), timeout=10) as sock:
+            with ssl.create_default_context().wrap_socket(sock, server_hostname=host):
+                return
+    except ssl.SSLCertVerificationError:
+        cert_error_exit()
+    except OSError:
+        # 通信の問題は、このあとのキーの確認で理由つきで分かるので、ここでは止めない
+        return
+
+
+# ---- --setup ----
+
+def open_browser(url):
+    """待たずに戻る。webbrowser.open は Linux で端末用のブラウザーを前面で起動して止まることがある。"""
+    quiet = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+    try:
+        if sys.platform == "win32":
+            os.startfile(url)  # type: ignore[attr-defined]
+            return True
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", url], **quiet)
+            return True
+        opener = shutil.which("xdg-open")
+        if opener:
+            subprocess.Popen([opener, url], start_new_session=True, **quiet)
+            return True
+    except OSError:
+        pass
+    return False
+
+
+_ESCAPES = {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}
+
+
+def escape_html(s):
+    return "".join(_ESCAPES.get(c, c) for c in s)
+
+
+SETUP_HTML_PATH = os.path.join(HERE, "setup.html")
+SETUP_HTML = ""
+_SETUP_SECTIONS = ("form_title", "message", "form", "done")
+_SETUP_PLACEHOLDERS = ("MESSAGE", "CONSOLE_URL", "KEY_PATH")
+
+
+def load_setup_html():
+    """--setup のときだけ読む。必要なセクションとプレースホルダーが揃っていなければ終了する。"""
+    global SETUP_HTML
+    try:
+        with open(SETUP_HTML_PATH, encoding="utf-8") as f:
+            html = f.read()
+        sections = set(re.findall(r"<!--section:(\w+)-->[\s\S]*?<!--/section-->", html))
+        holders = set(re.findall(r"\{\{(\w+)\}\}", html))
+        ok = all(n in sections for n in _SETUP_SECTIONS)
+        ok = ok and all(n in holders for n in _SETUP_PLACEHOLDERS) and all(n in _SETUP_PLACEHOLDERS for n in holders)
+    except (OSError, ValueError):
+        ok = False
+    if not ok:
+        print("setup.html を読めない: %s" % SETUP_HTML_PATH, file=sys.stderr)
+        sys.exit(2)
+    SETUP_HTML = html
+
+
+def render_page(key_path, message=None, done=False):
+    """setup.html の <!--section:名前--> ... <!--/section--> のうち、この画面で使うものだけを残して値を差し込む。"""
+    if done:
+        keep = {"done"}
+    elif message:
+        keep = {"form_title", "message", "form"}
+    else:
+        keep = {"form_title", "form"}
+    values = {"MESSAGE": message or "", "CONSOLE_URL": CONSOLE_URL, "KEY_PATH": key_path}
+    html = re.sub(
+        r"<!--section:(\w+)-->\n?([\s\S]*?)<!--/section-->\n?",
+        lambda m: m.group(2) if m.group(1) in keep else "",
+        SETUP_HTML,
+    )
+    return re.sub(r"\{\{(\w+)\}\}", lambda m: escape_html(values.get(m.group(1), "")), html)
+
+
+def save_key(key_path, key):
+    d = os.path.dirname(key_path)
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(d, 0o700)
+    except OSError:
+        pass  # Windows などで権限を変えられない場合は無視する
+    tmp = None
+    try:
+        # 書きかけのファイルが残らないよう、同じフォルダーに別名 (権限 600) で書いてから置き換える
+        fd, tmp = tempfile.mkstemp(dir=d, prefix=".api_key.")
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(key + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, key_path)
+        tmp = None
+    finally:
+        if tmp is not None:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+
+def run_setup():
+    load_setup_html()
+    try:
+        key_path = key_file_path()
+    except KeyPathError:
+        print("キーの保存先が決められない (APPDATA / USERPROFILE / HOME を確かめる)。", file=sys.stderr)
+        sys.exit(1)
+    check_certificates()
+    token_path = "/" + secrets.token_hex(24)
+    state = {"port": 0, "finished": False}
+    busy = threading.Lock()
+    done_event = threading.Event()
+
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.0"
+
+        def log_message(self, *args):
+            pass  # 標準のログは URL (合言葉入り) を stderr に出すので止める
+
+        def _send(self, status, html):
+            data = html.encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Referrer-Policy", "same-origin")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            self.wfile.flush()
+
+        def _reject(self, status, text):
+            data = text.encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def _handle(self):
+            if state["finished"]:
+                return self._reject(403, "forbidden")
+            port = state["port"]
+            if self.headers.get("Host") != "127.0.0.1:%d" % port:
+                return self._reject(403, "forbidden")
+            origin = self.headers.get("Origin")
+            if origin is not None and origin != "http://127.0.0.1:%d" % port:
+                return self._reject(403, "forbidden")
+            given = self.path.split("?")[0].encode("utf-8")
+            if not hmac.compare_digest(given, token_path.encode("utf-8")):
+                return self._reject(403, "forbidden")
+            if self.command == "GET":
+                return self._send(200, render_page(key_path))
+            if self.command != "POST":
+                return self._reject(405, "method not allowed")
+
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                return self._reject(400, "bad request")
+            if length < 0 or length > 8192:
+                return self._reject(413, "too large")
+            body = self.rfile.read(length)
+
+            if not busy.acquire(blocking=False):
+                return self._send(409, render_page(key_path, "確認中。しばらく待ってから、もう一度試す。"))
+            try:
+                fields = urllib.parse.parse_qs(body.decode("utf-8", errors="replace"))
+                key = (fields.get("key") or [""])[0].strip()
+                if not key:
+                    return self._send(400, render_page(key_path, "キーが空だった。貼り付けてから保存を押す。"))
+                if not re.fullmatch(r"[\x21-\x7e]+", key):
+                    return self._send(400, render_page(key_path, "キーに使えない文字が含まれている。貼り付け直す。"))
+                # 使えないキーを保存して、点検のたびに認証で落ちるのを避けるため、保存の前に1回だけ呼んで確かめる
+                probe = "テスト。"
+                q = QUESTIONS["actor_missing"]
+                try:
+                    call_api(
+                        key,
+                        {"paragraph": probe, "sentence": probe},
+                        {"actor_missing": {"type": q["type"], "instructions": q["instructions"], "criteria": q["criteria"]}},
+                    )
+                except AuthError:
+                    return self._send(401, render_page(key_path, "キーが受け付けられなかった (401/403)。キーを確かめて、もう一度入力する。"))
+                except CertError:
+                    return self._send(502, render_page(key_path, CERT_ERROR_MESSAGE.format(python=sys.executable)))
+                except ApiCallError as e:
+                    return self._send(502, render_page(key_path, "キーを確かめられなかった (%s)。通信を確かめて、もう一度入力する。" % e.reason))
+                try:
+                    save_key(key_path, key)
+                except OSError as e:
+                    why = errno.errorcode.get(e.errno, "error") if e.errno is not None else "error"
+                    return self._send(500, render_page(key_path, "キーを保存できなかった (%s)。保存先の権限を確かめて、もう一度入力する。" % why))
+                state["finished"] = True
+                try:
+                    self._send(200, render_page(key_path, done=True))
+                except Exception:
+                    pass  # 保存は済んでいるので、応答を送れなくても終了に進む
+                finally:
+                    done_event.set()
+            finally:
+                busy.release()
+
+        do_GET = do_POST = do_PUT = do_DELETE = do_PATCH = do_HEAD = do_OPTIONS = _handle
+
+    class Server(ThreadingHTTPServer):
+        # 既定は True。同じポートに別のプロセスが居ても、合言葉入りの URL を横取りされないようにする
+        allow_reuse_address = False
+
+    try:
+        server = Server(("127.0.0.1", 0), Handler)
+    except OSError:
+        print("入力画面用のサーバーを起動できなかった。", file=sys.stderr)
+        sys.exit(1)
+    server.daemon_threads = True
+    state["port"] = server.server_address[1]
+    url = "http://127.0.0.1:%d%s" % (state["port"], token_path)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
+    if os.environ.get("AI_WRITING_SIGNS_NO_BROWSER") == "1":
+        print("このURLを開く:\n" + url)
+    else:
+        print("ブラウザーに入力画面を開く。開かないときは、このURLを開く:\n" + url)
+        if not open_browser(url):
+            print("ブラウザーを開けなかった。このURLを開く:\n" + url)
+    print("キーを貼って保存するまで待つ (10 分で終了する)。保存先: " + key_path)
+    sys.stdout.flush()
+
+    try:
+        saved = done_event.wait(SETUP_TIMEOUT)
+    except KeyboardInterrupt:
+        print("\n中断した。保存していない。", file=sys.stderr)
+        os._exit(130)
+    if not saved:
+        print("10 分たっても保存されなかったので終了した。保存していない。", file=sys.stderr)
+        os._exit(1)
+    try:
+        print("保存した: %s (本人だけが読める権限)。" % key_path)
+        if os.environ.get("TYPESAFE_API_KEY", "").strip():
+            print("ただし環境変数 TYPESAFE_API_KEY が設定されているので、点検では環境変数が優先される。")
+        sys.stdout.flush()
+    except Exception:
+        pass  # 保存は済んでいるので、出力に失敗しても成功として終える
+    os._exit(0)
+
+
 def strip_front_matter_and_code_blocks(raw_lines):
-    """check.sh と同じ考え方: front matter とコードブロックを行番号を保ったまま空行に置き換える。"""
+    """front matter とコードブロックを行番号を保ったまま空行に置き換える。"""
     out = []
     in_front_matter = False
     in_code_block = False
@@ -277,8 +567,14 @@ def split_sentences(text):
 
 
 def collect_sentences(path):
-    with open(path, encoding="utf-8") as f:
-        raw_lines = f.read().splitlines()
+    with open(path, "rb") as f:
+        data = f.read()
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        print("UTF-8 ではない: %s" % path, file=sys.stderr)
+        sys.exit(2)
+    raw_lines = text.replace("\r\n", "\n").replace("\r", "\n").splitlines()
     lines = strip_front_matter_and_code_blocks(raw_lines)
     list_starts = [bool(_LIST_RE.match(line)) for line in lines]
     lines = [classify_line(line) for line in lines]
@@ -301,13 +597,24 @@ def collect_sentences(path):
 
 
 def questions_for(sentence):
-    ids = ["actor_missing", "actor_shift", "thing_acts", "odd_collocation"]
-    if "「" in sentence and "」" in sentence:
-        ids.append("kagi_emphasis")
-    if "目" in sentence or "手" in sentence:
-        ids.append("human_emphasis")
-    ids.append("unknowable")
-    return {qid: {"type": "noul", "instructions": QUESTIONS[qid]["instructions"], "criteria": QUESTIONS[qid]["criteria"]} for qid in ids}
+    result = {}
+    for sel in RULES["question_selection"]:
+        if "contains_all" in sel and not all(t in sentence for t in sel["contains_all"]):
+            continue
+        if "contains_any" in sel and not any(t in sentence for t in sel["contains_any"]):
+            continue
+        q = QUESTIONS[sel["id"]]
+        result[sel["id"]] = {"type": q["type"], "instructions": q["instructions"], "criteria": q["criteria"]}
+    return result
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    # 3xx には従わず HTTPError にする。Authorization を別のホストへ送らないため
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
 
 
 class AuthError(Exception):
@@ -327,7 +634,7 @@ class ApiCallError(Exception):
 
 
 def call_api(key, state, questions):
-    body = json.dumps({"state": state, "model": MODEL, "questions": questions}).encode("utf-8")
+    body = json.dumps({"state": state, "model": MODEL, "questions": questions}, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
         API_URL,
         data=body,
@@ -337,8 +644,11 @@ def call_api(key, state, questions):
     attempts = 1 + len(RETRY_DELAYS)
     for attempt in range(attempts):
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-                return json.load(resp)
+            with _OPENER.open(req, timeout=TIMEOUT) as resp:
+                parsed = json.load(resp)
+            if not isinstance(parsed, dict):
+                raise ApiCallError("bad_response")
+            return parsed
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
                 raise AuthError() from None
@@ -358,11 +668,19 @@ def call_api(key, state, questions):
             raise ApiCallError("network") from None
         except ssl.SSLCertVerificationError:
             raise CertError() from None
-        except TimeoutError:
+        except (TimeoutError, socket.timeout):
             if attempt < len(RETRY_DELAYS):
                 time.sleep(RETRY_DELAYS[attempt])
                 continue
             raise ApiCallError("timeout") from None
+        except (OSError, http.client.HTTPException):
+            # 応答の読み取り中に接続が切れた場合 (RemoteDisconnected・ConnectionResetError・IncompleteRead など)
+            if attempt < len(RETRY_DELAYS):
+                time.sleep(RETRY_DELAYS[attempt])
+                continue
+            raise ApiCallError("network") from None
+        except ApiCallError:
+            raise
         except Exception:
             # レスポンスの形が壊れている場合などは、この文の失敗として扱う
             raise ApiCallError("bad_response") from None
@@ -370,30 +688,46 @@ def call_api(key, state, questions):
 
 
 def judge_one(key, item):
-    questions = questions_for(item["sentence"])
+    try:
+        questions = questions_for(item["sentence"])
+    except (KeyError, TypeError, AttributeError):
+        raise ApiCallError("bad_response") from None
     state = {
         "paragraph": item["paragraph"].replace("**", ""),
         "sentence": item["sentence"].replace("**", ""),
     }
     data = call_api(key, state, questions)
+    if not isinstance(data, dict):
+        raise ApiCallError("bad_response")
     answers = data.get("answers")
     scores = {}
     if isinstance(answers, dict):
         for qid in questions:
             entry = answers.get(qid)
-            if isinstance(entry, dict) and "noul" in entry:
+            if isinstance(entry, dict) and isinstance(entry.get("noul"), (int, float)) and not isinstance(entry["noul"], bool):
                 scores[qid] = entry["noul"]
     if not scores:
         # 一部の判定だけ欠けている場合は取れた分だけ使うので、ここに来るのは全滅した時だけ
         raise ApiCallError("bad_response")
-    usage = data.get("usage") or {}
-    input_tokens = usage.get("input_tokens", usage.get("prompt_tokens", 0)) or 0
+    usage = data.get("usage")
+    if usage is None:
+        usage = {}
+    if not isinstance(usage, dict):
+        raise ApiCallError("bad_response")
+    input_tokens = usage.get("input_tokens", usage.get("prompt_tokens", 0))
+    if input_tokens is None:
+        input_tokens = 0
+    if isinstance(input_tokens, bool) or not isinstance(input_tokens, (int, float)):
+        raise ApiCallError("bad_response")
     return item, {"scores": scores, "input_tokens": input_tokens, "missing": len(questions) - len(scores)}
 
 
 def main():
     if len(sys.argv) != 2:
         usage_exit()
+    if sys.argv[1] == "--setup":
+        run_setup()
+        return
     path = sys.argv[1]
     if not os.path.isfile(path):
         usage_exit()
@@ -403,11 +737,17 @@ def main():
         print("判定する文が無い")
         sys.exit(0)
 
-    key = os.environ.get("TYPESAFE_API_KEY", "").strip()
+    try:
+        key, key_source = load_key()
+    except KeyFileError as e:
+        print(f"キーのファイルを読めない: {e}。権限と中身を確かめるか、`{setup_command()}` で保存し直す。", file=sys.stderr)
+        sys.exit(3)
     if not key:
         print(
-            "TYPESAFE_API_KEY が無い。環境変数にキーを渡して実行するか、"
-            "SKILL.md の点検手順 2 の兆候を 1 文ずつ読む",
+            "TypeSafe の API キーが無いので、Jev の判定はしていない。\n"
+            f"キーを設定するには、エージェントが `{setup_command()}` を実行する。"
+            "ブラウザーに入力画面が開くので、利用者がキーを貼って保存する。未登録なら、画面の手順で登録から進める。\n"
+            f"キーは {CONSOLE_URL} で作れる。今回は SKILL.md の点検手順 2 の観点で読む。",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -429,14 +769,10 @@ def main():
     try:
         _, first_result = judge_one(key, first_item)
     except AuthError:
-        print("TypeSafe API の認証に失敗した (401/403)。キーが無効な可能性がある。", file=sys.stderr)
+        print(f"TypeSafe API の認証に失敗した (401/403)。{key_source} のキーが無効な可能性がある。", file=sys.stderr)
         sys.exit(4)
     except CertError:
-        print(
-            "この python3 には証明書が無い。別の python3 (macOS は /usr/bin/python3) で実行する。",
-            file=sys.stderr,
-        )
-        sys.exit(5)
+        cert_error_exit()
     except ApiCallError as e:
         record_failure(e.reason)
     else:
@@ -450,13 +786,11 @@ def main():
                 try:
                     item, result = future.result()
                 except AuthError:
-                    sys.stderr.write("TypeSafe API の認証に失敗した (401/403)。キーが無効な可能性がある。\n")
+                    sys.stderr.write(f"TypeSafe API の認証に失敗した (401/403)。{key_source} のキーが無効な可能性がある。\n")
                     sys.stderr.flush()
                     os._exit(4)
                 except CertError:
-                    sys.stderr.write(
-                        "この python3 には証明書が無い。別の python3 (macOS は /usr/bin/python3) で実行する。\n"
-                    )
+                    sys.stderr.write(CERT_ERROR_MESSAGE.format(python=sys.executable) + "\n")
                     sys.stderr.flush()
                     os._exit(5)
                 except ApiCallError as e:
