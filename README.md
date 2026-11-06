@@ -63,12 +63,13 @@ cd agent-skills
 | `screen-review` | UI 動作確認 | スクショ / 画面録画を集約して macOS Preview で一括表示。PR への修正前後テーブル / GIF 埋め込みも自動化 |
 | `lp-marketing` | LP 制作・改善 | 誰に・何を・なぜ信じてもらうかを確定してから構成・コピー・計測設計まで導く。マーケ用語はユーザーに要求せず、既存LPの「反応が悪い」相談にも対応 |
 | `web-marketing` | Web 集客戦略 | ボトルネックの特定からチャネル選定・施策・計測まで導く。LP単体の相談は `lp-marketing` に接続 |
+| `ai-writing-signs` | 文章の添削 | AI が書いたように見える日本語の兆候を、検出器と通読で見つけて直す。言い換えで済ませず、足りない事実を書くか削る。TypeSafe の Jev による判定は任意 |
 
 ### 全部入り
 
 | plugin | 内容 |
 |---|---|
-| `nayukata-skills` | 上記 9 スキルをまとめて導入 |
+| `nayukata-skills` | 上記 10 スキルをまとめて導入 |
 
 > `create-pr` は UI 変更の動作確認で `screen-review` を利用する。両方使う場合は `nayukata-skills` か、`create-pr` と `screen-review` の併用がおすすめ。
 
@@ -93,6 +94,10 @@ cd agent-skills
     │   ├── NOTICE.md
     │   └── LICENSE
     ├── ux-laws/SKILL.md
+    ├── ai-writing-signs/
+    │   ├── SKILL.md
+    │   ├── scripts/       # 正規表現の検出器 / Jev による判定
+    │   └── evals/         # スキルを試すための評価 (スキル動作には不要)
     ├── writing-tasks/SKILL.md
     ├── screen-review/
     │   ├── SKILL.md
@@ -114,3 +119,7 @@ skill を編集して GitHub に push したあと、手元の Claude Code に�
 ```bash
 /plugin marketplace update nayukata
 ```
+
+## ライセンス
+
+MIT License で配布する。本文は `LICENSE` にある。ただし `japanese-tech-writing` は第三者のスキルなので、元の Unlicense のまま再配布している。

@@ -19,19 +19,25 @@
     {
       "name": "ux-laws",
       "source": "./",
-      "skills": ["./skills/ux-laws"],
+      "skills": [
+        "./skills/ux-laws"
+      ],
       "description": "UI 実装前または既存 UI の改修判断時に、10 の UX 法則に基づいてレビューし推奨改善案を出すスキル。"
     },
     {
       "name": "writing-tasks",
       "source": "./",
-      "skills": ["./skills/writing-tasks"],
+      "skills": [
+        "./skills/writing-tasks"
+      ],
       "description": "タスク / バグチケットの説明文をユーザー視点で書くスキル。ClickUp / Jira / GitHub Issues / Linear / Notion などに対応。"
     },
     {
       "name": "screen-review",
       "source": "./",
-      "skills": ["./skills/screen-review"],
+      "skills": [
+        "./skills/screen-review"
+      ],
       "description": "UI 動作確認のスクショ / 画面録画を 1 ディレクトリに集約し macOS Preview で一括表示するスキル。PR への修正前後テーブル / GIF 埋め込みも自動化する。"
     },
     {
@@ -46,26 +52,42 @@
     {
       "name": "japanese-tech-writing",
       "source": "./",
-      "skills": ["./skills/japanese-tech-writing"],
+      "skills": [
+        "./skills/japanese-tech-writing"
+      ],
       "description": "k16shikano氏による日本語技術文書の文章規範。Unlicenseで公開されたGistを、出典とライセンスを明記して再配布する。"
     },
     {
       "name": "design-hearing",
       "source": "./",
-      "skills": ["./skills/design-hearing"],
+      "skills": [
+        "./skills/design-hearing"
+      ],
       "description": "曖昧なデザイン要望（「いい感じに」等）を、仮埋めブリーフと対比モックのヒアリングで具体化してから UI を実装するスキル。新規画面や方向性の曖昧な依頼で発動し、既存デザイン内の小さな1要素修正では発動しない。擬態語・素材・景色を実装値に翻訳する辞書と、人間向けの語彙ガイドを同梱。"
     },
     {
       "name": "lp-marketing",
       "source": "./",
-      "skills": ["./skills/lp-marketing"],
+      "skills": [
+        "./skills/lp-marketing"
+      ],
       "description": "LP（ランディングページ）の制作・改善をマーケティング戦略から組み立てるスキル。「誰に・何を・なぜ信じてもらうか」を確定し、訪問者の温度感に合わせた構成・コピー・計測設計まで導く。ブリーフ・訴求構成・コピーライティング・計測などのリファレンスを同梱。"
     },
     {
       "name": "web-marketing",
       "source": "./",
-      "skills": ["./skills/web-marketing"],
+      "skills": [
+        "./skills/web-marketing"
+      ],
       "description": "Webマーケティング全般（SNS運用・SEO・広告・メール/LINE・コンテンツ）の戦略立案と施策設計のスキル。ボトルネックの特定からチャネル選定・施策・計測まで導く。LP単体の相談は lp-marketing スキルに接続する。"
+    },
+    {
+      "name": "ai-writing-signs",
+      "source": "./",
+      "skills": [
+        "./skills/ai-writing-signs"
+      ],
+      "description": "日本語の文章から、AI が書いたように見える兆候を見つけて直すスキル。正規表現の検出器と通読で探し、言い換えで済ませずに、足りない事実を書くか、要らない文を削る。TypeSafe の Jev による判定は任意。"
     },
     {
       "name": "nayukata-skills",
@@ -79,9 +101,10 @@
         "./skills/japanese-tech-writing",
         "./skills/design-hearing",
         "./skills/lp-marketing",
-        "./skills/web-marketing"
+        "./skills/web-marketing",
+        "./skills/ai-writing-signs"
       ],
-      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr / japanese-tech-writing / design-hearing / lp-marketing / web-marketing の 9 スキルをまとめて導入する。"
+      "description": "全部入り。create-pr / ux-laws / writing-tasks / screen-review / review-pr / japanese-tech-writing / design-hearing / lp-marketing / web-marketing / ai-writing-signs の 10 スキルをまとめて導入する。"
     }
   ]
 }
