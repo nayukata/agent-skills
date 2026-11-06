@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="same-origin">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>API キーの保存</title>
+<style>
+body{font-family:system-ui,-apple-system,'Segoe UI','Hiragino Sans','Yu Gothic',sans-serif;max-width:34rem;margin:3rem auto;padding:0 1rem;line-height:1.7;color:#1c1c1c}
+h1{font-size:1.3rem}
+input[type=password]{width:100%;box-sizing:border-box;padding:.6rem;font-size:1rem;margin:.4rem 0 .8rem}
+button{font-size:1rem;padding:.5rem 1.4rem}
+.err{color:#b00020;font-weight:bold}
+small{color:#555}
+</style>
+</head>
+<body>
+<!--section:form_title-->
+<h1>TypeSafe の API キーを保存する</h1>
+<!--/section-->
+<!--section:message-->
+<p class="err">{{MESSAGE}}</p>
+<!--/section-->
+<!--section:form-->
+<ol>
+<li>TypeSafe のアカウントが無ければ、<a href="https://console.typesafe.ai/" target="_blank" rel="noreferrer noopener">https://console.typesafe.ai/</a> で登録する。TypeSafe では毎月5ドル分のクレジットが付与され、その範囲なら無料で使える。条件は変わることがあるので、TypeSafe のサイトで確かめる。</li>
+<li><a href="{{CONSOLE_URL}}" target="_blank" rel="noreferrer noopener">{{CONSOLE_URL}}</a> で API キーを作る。</li>
+<li>作ったキーを下の欄に貼り、保存を押す。</li>
+</ol>
+<form method="post" autocomplete="off">
+<label for="key">API キー</label>
+<input id="key" name="key" type="password" autocomplete="off" required autofocus>
+<button type="submit">保存</button>
+</form>
+<p><small>点検のたびに、点検する文章が TypeSafe の API (api.typesafe.ai) に送られる。キーも、この API 以外には送られない。保存先はこの PC の <code>{{KEY_PATH}}</code>。macOS と Linux では本人だけが読める権限で書き、Windows ではユーザーのプロファイルの下に置く。</small></p>
+<p><small>Jev を使わなくても点検はできる。使わないなら、この画面は閉じてよい。</small></p>
+<!--/section-->
+<!--section:done-->
+<h1>保存した</h1>
+<p>API キーを保存した。このタブは閉じてよい。</p>
+<p><small>点検に戻って、エージェントに続きを任せる。</small></p>
+<!--/section-->
+</body>
+</html>
